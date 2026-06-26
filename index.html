@@ -1,0 +1,272 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Protocolos de Servicio</title>
+  <style>
+    :root {
+      --brand: #007882;
+      --brand-dark: #005f66;
+      --brand-soft: #e9f7f7;
+      --bg: #f2f6f8;
+      --card: #ffffff;
+      --text: #101828;
+      --gray: #667085;
+      --line: #dfe7eb;
+      --green: #2e7d32;
+      --yellow: #f9a825;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(158,225,225,.3), transparent 34%),
+        linear-gradient(180deg, #f8fbfd 0%, var(--bg) 42%, #edf4f8 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .hero {
+      background:
+        linear-gradient(135deg, rgba(0,120,130,.96), rgba(6,81,81,.98)),
+        radial-gradient(circle at top right, rgba(158,225,225,.35), transparent 34%);
+      color: white;
+      padding: 32px 24px 48px;
+      border-bottom-left-radius: 34px;
+      border-bottom-right-radius: 34px;
+      box-shadow: 0 18px 45px rgba(16,32,51,.10);
+      text-align: center;
+    }
+
+    .hero-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-box {
+      width: 100px;
+      height: 100px;
+      border-radius: 22px;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.24);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      backdrop-filter: blur(8px);
+    }
+
+    .logo-box img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .eyebrow {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1.8px;
+      color: rgba(255,255,255,.76);
+      font-weight: 700;
+    }
+
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 46px);
+      line-height: 1.05;
+      letter-spacing: -1px;
+      font-weight: 900;
+    }
+
+    .hero p {
+      font-size: 16px;
+      line-height: 1.55;
+      color: rgba(255,255,255,.85);
+      max-width: 600px;
+    }
+
+    .page {
+      max-width: 1100px;
+      margin: -28px auto 0;
+      padding: 0 18px 60px;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 22px;
+    }
+
+    .dash-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      padding: 32px 26px;
+      box-shadow: 0 10px 30px rgba(16,24,40,.07);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 16px;
+      transition: transform .2s ease, box-shadow .2s ease;
+      text-decoration: none;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .dash-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 18px 44px rgba(0,120,130,.15);
+    }
+
+    .dash-card.disabled {
+      cursor: default;
+      opacity: .7;
+    }
+
+    .dash-card.disabled:hover {
+      transform: none;
+      box-shadow: 0 10px 30px rgba(16,24,40,.07);
+    }
+
+    .card-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 20px;
+      display: grid;
+      place-items: center;
+      font-size: 36px;
+    }
+
+    .card-icon.teal {
+      background: var(--brand-soft);
+      color: var(--brand);
+    }
+
+    .card-icon.green {
+      background: #edf8ef;
+      color: var(--green);
+    }
+
+    .card-icon.yellow {
+      background: #fef7e6;
+      color: var(--yellow);
+    }
+
+    .dash-card h2 {
+      font-size: 21px;
+      font-weight: 900;
+      letter-spacing: -.3px;
+      margin: 0;
+    }
+
+    .dash-card p {
+      font-size: 14px;
+      color: var(--gray);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .card-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .card-badge.active {
+      background: var(--brand-soft);
+      color: var(--brand-dark);
+    }
+
+    .card-badge.soon {
+      background: #f3f4f6;
+      color: #98a2b3;
+    }
+
+    @media (max-width: 820px) {
+      .cards-grid {
+        grid-template-columns: 1fr;
+        max-width: 420px;
+        margin: 0 auto;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="logo-box">
+        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" fill="white" width="90" height="90">
+          <!-- Graduation cap -->
+          <polygon points="100,28 20,68 100,108 180,68" fill="white"/>
+          <polygon points="100,108 40,80 40,110 100,140 160,110 160,80" fill="white" opacity="0.85"/>
+          <line x1="170" y1="68" x2="170" y2="120" stroke="white" stroke-width="3"/>
+          <rect x="166" y="118" width="8" height="8" fill="white" rx="1"/>
+          <!-- GEB text -->
+          <text x="100" y="162" text-anchor="middle" font-family="Arial,sans-serif" font-size="28" font-weight="900" letter-spacing="8" fill="white">GEB</text>
+          <!-- UNIVERSITY text -->
+          <text x="100" y="182" text-anchor="middle" font-family="Arial,sans-serif" font-size="16" font-weight="900" fill="white">UNIVERSITY</text>
+        </svg>
+      </div>
+      <p class="eyebrow">Sistema de Monitoreo</p>
+      <h1>Protocolos de Servicio</h1>
+      <p>Selecciona un dashboard para visualizar los indicadores de gestiÃ³n y cumplimiento.</p>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="cards-grid">
+
+      <a class="dash-card" href="ambiente-fisico.html">
+        <div class="card-icon teal">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
+        <h2>Ambiente Fisico</h2>
+        <p>Indicadores de condiciones fisicas de los clubes: temperatura, humedad, iluminacion y mas.</p>
+        <span class="card-badge active">Disponible &#10132;</span>
+      </a>
+
+      <a class="dash-card" href="apariencia.html">
+        <div class="card-icon green">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="8.5" cy="7" r="4"/>
+            <polyline points="17 11 19 13 23 9"/>
+          </svg>
+        </div>
+        <h2>Politica de Apariencia</h2>
+        <p>Cumplimiento de estandares de imagen y presentacion del personal en cada club.</p>
+        <span class="card-badge active">Disponible &#10132;</span>
+      </a>
+
+      <div class="dash-card disabled">
+        <div class="card-icon yellow">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <h2>Proximamente</h2>
+        <p>Nuevo dashboard en desarrollo. Estara disponible pronto.</p>
+        <span class="card-badge soon">En desarrollo</span>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>
