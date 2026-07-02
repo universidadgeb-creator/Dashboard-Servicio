@@ -784,7 +784,7 @@
   // Alimenta: (1) cumplimiento real de caminatas por club, (2) metas por rol
   // desde "Plantilla y Meta", (3) persistencia de resolución de comentarios,
   // (4) motivos de falla de Gafete.
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/TU_ID_DE_DESPLIEGUE/exec";
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby8e1vk137rCOGYpaSkX1jBrcrlktfhlAeq8t2CQHCeARKd014keHngDtt62cW-hRVsgQ/exec";
 
   const MONTHS  = ["Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   const CLUBS   = ["Naciones Unidas","Gourmetería","Valle Real"];
@@ -817,6 +817,12 @@
   // [NUEVO] (4) Motivos de falla de Gafete, conteos brutos por club/mes/turno.
   let motivosGafeteData = []; // [{club, mes, turno, motivo, conteo}, ...]
   let gafeteChart = null;
+
+  // [FIX 2026-07-02] loadData() (gviz) y loadBackendData() (Apps Script) corren
+  // en paralelo. Si el backend responde antes de que "respuestas" esté lista,
+  // se guarda aquí para reintentar el merge en cuanto gviz termine, sin
+  // importar el orden de llegada.
+  let pendingResoluciones = null;
 
   // Devuelve las metas por rol de un club: usa datos dinámicos del backend si
   // ya llegaron, si no, cae de vuelta al respaldo estático.
@@ -936,6 +942,7 @@
         const table = data.table;
         if (!table || !table.rows) throw new Error("Sin datos");
         respuestas = parseGvizTable(table);
+        if (pendingResoluciones) mergeResolucionesPersistidas_(pendingResoluciones);
         populateFilters();
         renderAll();
         renderAvance();
@@ -1032,7 +1039,8 @@
       motivosGafeteData = motivos.motivosGafete;
     }
     if (resoluciones && resoluciones.resoluciones) {
-      mergeResolucionesPersistidas_(resoluciones.resoluciones);
+      pendingResoluciones = resoluciones.resoluciones;
+      mergeResolucionesPersistidas_(pendingResoluciones);
     }
 
     // Vuelve a pintar todo con los datos ya corregidos/dinámicos.
