@@ -711,6 +711,9 @@
           <button class="tab-btn" data-tab="todos">Todos</button>
         </div>
 
+        <!-- [NUEVO 2026-07-02] Resumen de comentarios clasificados por tipo de incidencia y mes -->
+        <div id="tipoIncidenciaSummary"></div>
+
         <div class="comments-filters">
           <div class="field"><label for="commentClub">Sucursal</label><select id="commentClub"></select></div>
           <div class="field"><label for="commentMonth">Mes</label><select id="commentMonth"></select></div>
@@ -798,6 +801,24 @@
     { key:"G",  name:"Gafete",                       description:"Gafete visible, limpio, alineado y portado correctamente." }
   ];
   const CLUB_COLORS = { "Naciones Unidas":"#007882", "Gourmetería":"#7cd4d2", "Valle Real":"#9ee1e1" };
+
+  // [MODIFICADO 2026-07-02] Mismas categorías que el Google Form/Sheet, con
+  // "Otro" permitiendo texto libre para que el colaborador de CH escriba su
+  // propia categoría cuando ninguna de las anteriores aplique.
+  const TIPOS_INCIDENCIA = ["Gafete", "Reposición de uniforme", "Duda en uniforme", "Alineación al colaborador", "Otro"];
+
+  // Empareja la clasificación cruda del Sheet (columna R) con una de las
+  // categorías fijas de arriba (comparación sin acentos/mayúsculas). Si no
+  // coincide con ninguna pero sí trae texto, se trata como "Otro" con ese
+  // texto como valor personalizado.
+  function matchTipoIncidencia_(rawTipo) {
+    const raw = cleanText(rawTipo);
+    if (!raw) return { select: "", custom: "" };
+    const norm = normalizeText(raw);
+    const found = TIPOS_INCIDENCIA.find(t => t !== "Otro" && normalizeText(t) === norm);
+    if (found) return { select: found, custom: "" };
+    return { select: "Otro", custom: raw };
+  }
 
   // ─── ESTADO ──────────────────────────────────────────────────────────────────
   let respuestas    = [];
@@ -1162,13 +1183,15 @@
       const mes        = normalizeMonth(get(idx.mes));
       if (!mes) { droppedNoMes++; continue; }
 
-      // [NUEVO 2026-07-02] Combina la clasificación (col R: Gafete/Uniforme/...)
-      // con la explicación libre (col S) para mostrar el comentario completo.
+      // [MODIFICADO 2026-07-02] La clasificación (col R: Gafete/Uniforme/...) ya
+      // NO se mezcla con el texto del comentario — se guarda aparte
+      // (tipoReporteSheet) para usarse como valor por defecto del selector
+      // "Tipo" en el panel de Comentarios CH. El texto del comentario es la
+      // explicación libre (col S); si no hay explicación, se usa la
+      // clasificación como respaldo para no perder el registro.
       const tipoReporte = cleanText(get(idx.comentarios));
       const explicaIncidencia = cleanText(get(idx.explicaIncidencia));
-      const comentarios = tipoReporte && explicaIncidencia
-        ? `[${tipoReporte}] ${explicaIncidencia}`
-        : (tipoReporte || explicaIncidencia);
+      const comentarios = explicaIncidencia || tipoReporte;
 
       // Fecha del registro (col 0 — timestamp del formulario)
       let fecha = null;
@@ -1199,7 +1222,7 @@
       )).slice(0,24);
 
       rows.push({ club, mes, embajador, colaborador, rol, turno,
-                  criterios, comentarios, fecha, commentId, gvizRowIndex: gvizIndex });
+                  criterios, comentarios, tipoReporteSheet: tipoReporte, fecha, commentId, gvizRowIndex: gvizIndex });
     }
     // [NUEVO] Diagnóstico visible en consola si el resultado queda en 0 filas
     if (!rows.length && table.rows.length) {
@@ -1638,14 +1661,15 @@
       return;
     }
 
-    // [NUEVO] (3) Clasificación rápida: tipos de incidencia disponibles
-    const TIPOS_INCIDENCIA = ["Gafete", "Uniforme", "Calzado", "Presentación", "Otros"];
-
     container.innerHTML = rows.map(r => {
       const state       = comentStates[r.commentId] || {};
       const isResolved  = !!state.resolved;
       const resolvedDate= state.resolvedDate || "";
-      const tipo        = state.tipo || "";
+      // [MODIFICADO 2026-07-02] Si CH ya editó manualmente el tipo (state.tipo),
+      // eso manda. Si no, se usa por defecto la clasificación que viene del
+      // Google Sheet (columna R), pero sigue siendo editable desde el select.
+      const tipoEfectivo = state.tipo || r.tipoReporteSheet || "";
+      const { select: tipoSelect, custom: tipoCustom } = matchTipoIncidencia_(tipoEfectivo);
       // [MODIFICADO] (3) el checkbox solo puede habilitarse si ya hay fecha
       const canCheck    = !!resolvedDate;
 
@@ -1667,7 +1691,7 @@
       }
 
       const tipoOptions = ["", ...TIPOS_INCIDENCIA].map(t =>
-        `<option value="${t}" ${t===tipo?"selected":""}>${t || "Tipo de incidencia..."}</option>`
+        `<option value="${t}" ${t===tipoSelect?"selected":""}>${t || "Tipo de incidencia..."}</option>`
       ).join("");
 
       return `
@@ -1698,16 +1722,75 @@
               <select onchange="setTipoIncidencia('${r.commentId}', '${r.gvizRowIndex}', this.value)">
                 ${tipoOptions}
               </select>
+              <input type="text" placeholder="Especifica el tipo..."
+                value="${escapeHtml(tipoCustom)}"
+                style="display:${tipoSelect==='Otro'?'inline-block':'none'};width:160px;
+                  border:1px solid #d9e3ea;border-radius:8px;padding:6px 8px;font-size:13px;"
+                onchange="setTipoIncidenciaOtro('${r.commentId}', '${r.gvizRowIndex}', this.value)" />
             </div>
             ${daysHtml}
             <button type="button" class="hide-comment-btn" onclick="hideComment('${r.commentId}')"
               style="margin-left:auto;background:none;border:1px solid #c5d4de;border-radius:6px;
               padding:4px 10px;font-size:12px;color:#5a7080;cursor:pointer;">
-              🙈 Ocultar de la vista
+              Ocultar de la vista
             </button>
           </div>
         </div>`;
     }).join("");
+
+    renderTipoIncidenciaResumen();
+  }
+
+  // [NUEVO 2026-07-02] Resumen de comentarios relevantes clasificados por tipo
+  // de incidencia y mes (independiente de los filtros de pestaña/club/turno,
+  // para tener una vista global de cuántos casos de cada tipo hubo por mes).
+  function renderTipoIncidenciaResumen() {
+    const el = document.getElementById("tipoIncidenciaSummary");
+    if (!el) return;
+
+    const categorias = [...TIPOS_INCIDENCIA.filter(t => t !== "Otro"), "Otro", "Sin clasificar"];
+    const counts = {};
+    MONTHS.forEach(m => { counts[m] = {}; categorias.forEach(c => counts[m][c] = 0); });
+
+    respuestas.filter(r => isRelevantComment(r.comentarios)).forEach(r => {
+      const state = comentStates[r.commentId] || {};
+      const efectivo = state.tipo || r.tipoReporteSheet || "";
+      let cat = "Sin clasificar";
+      if (efectivo) {
+        const { select } = matchTipoIncidencia_(efectivo);
+        cat = select || "Otro";
+      }
+      if (counts[r.mes]) counts[r.mes][cat]++;
+    });
+
+    const totals = {};
+    categorias.forEach(c => totals[c] = MONTHS.reduce((s, m) => s + counts[m][c], 0));
+    const grandTotal = categorias.reduce((s, c) => s + totals[c], 0);
+
+    if (!grandTotal) {
+      el.innerHTML = `<div class="empty" style="margin-bottom:16px;">Aún no hay comentarios clasificados por tipo de incidencia.</div>`;
+      return;
+    }
+
+    const headerCells = categorias.map(c => `<th>${escapeHtml(c)}</th>`).join("");
+    const bodyRows = MONTHS.map(m => {
+      const total = categorias.reduce((s, c) => s + counts[m][c], 0);
+      if (!total) return "";
+      const cells = categorias.map(c => `<td style="text-align:center;">${counts[m][c] || "—"}</td>`).join("");
+      return `<tr><td>${m}</td>${cells}<td style="text-align:center;font-weight:700;">${total}</td></tr>`;
+    }).join("");
+    const totalRow = `<tr style="font-weight:800;background:#f8fbfd;">
+      <td>Total</td>${categorias.map(c => `<td style="text-align:center;">${totals[c] || "—"}</td>`).join("")}
+      <td style="text-align:center;">${grandTotal}</td></tr>`;
+
+    el.innerHTML = `
+      <h3 style="font-size:16px;margin:0 0 10px;">Comentarios por tipo de incidencia y mes</h3>
+      <div class="table-wrap" style="margin-bottom:22px;">
+        <table class="progress-table">
+          <thead><tr><th>Mes</th>${headerCells}<th>Total</th></tr></thead>
+          <tbody>${bodyRows}${totalRow}</tbody>
+        </table>
+      </div>`;
   }
 
   // [MODIFICADO] (3) El checkbox solo puede marcarse una vez que ya existe una
@@ -1730,12 +1813,31 @@
     renderComments();
   }
 
-  // [NUEVO] (3) Clasificación rápida del tipo de incidencia — también se persiste.
+  // [MODIFICADO 2026-07-02] Clasificación rápida del tipo de incidencia.
+  // Si elige "Otro" no se persiste todavía — se espera a que escriba el texto
+  // en el campo que aparece al lado (ver setTipoIncidenciaOtro). Para el resto
+  // de las categorías fijas, se persiste de inmediato.
   async function setTipoIncidencia(id, gvizRowIndex, tipo) {
     if (!comentStates[id]) comentStates[id] = {};
+    if (tipo === "Otro") {
+      renderComments(); // solo muestra el input de texto, sin persistir aún
+      return;
+    }
     comentStates[id].tipo = tipo;
     await saveCommentStates();
     await persistirResolucion_(gvizRowIndex, comentStates[id].resolvedDate || "", tipo);
+    renderComments();
+  }
+
+  // [NUEVO 2026-07-02] Persiste la categoría personalizada escrita cuando el
+  // select está en "Otro".
+  async function setTipoIncidenciaOtro(id, gvizRowIndex, texto) {
+    if (!comentStates[id]) comentStates[id] = {};
+    const tipo = cleanText(texto);
+    comentStates[id].tipo = tipo || "Otro";
+    await saveCommentStates();
+    await persistirResolucion_(gvizRowIndex, comentStates[id].resolvedDate || "", comentStates[id].tipo);
+    renderComments();
   }
 
   // [NUEVO] (3) Escribe fecha de resolución + tipo directamente en la hoja de
