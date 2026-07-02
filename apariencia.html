@@ -711,7 +711,7 @@
           <button class="tab-btn" data-tab="todos">Todos</button>
         </div>
 
-        <!-- [NUEVO 2026-07-02] Resumen de comentarios clasificados por tipo de incidencia y mes -->
+        <!-- [MODIFICADO 2026-07-02] Resumen simple: cuántas incidencias vs cuántas atendidas -->
         <div id="tipoIncidenciaSummary"></div>
 
         <div class="comments-filters">
@@ -719,6 +719,7 @@
           <div class="field"><label for="commentMonth">Mes</label><select id="commentMonth"></select></div>
           <div class="field"><label for="commentRole">Rol</label><select id="commentRole"></select></div>
           <div class="field"><label for="commentShift">Turno</label><select id="commentShift"></select></div>
+          <div class="field"><label for="commentTipo">Tipo de incidencia</label><select id="commentTipo"></select></div>
         </div>
 
         <div id="commentsContainer"></div>
@@ -807,15 +808,28 @@
   // propia categoría cuando ninguna de las anteriores aplique.
   const TIPOS_INCIDENCIA = ["Gafete", "Reposición de uniforme", "Duda en uniforme", "Alineación al colaborador", "Otro"];
 
+  // [FIX 2026-07-02] La comparación exacta fallaba en casos como el Sheet
+  // trayendo "Reposición uniforme" contra el catálogo "Reposición de
+  // uniforme" (una palabra conectora de diferencia) — el select caía siempre
+  // en "Otro" mostrando además el texto original al lado, dando la impresión
+  // de "doble clasificación". Ahora se ignoran palabras conectoras al
+  // comparar, así ambas formas emparejan con la misma categoría fija.
+  function normalizeTipoParaComparar_(v) {
+    return normalizeText(v)
+      .split(" ")
+      .filter(w => !["DE", "DEL", "LA", "EL", "LOS", "LAS", "AL"].includes(w))
+      .join(" ");
+  }
+
   // Empareja la clasificación cruda del Sheet (columna R) con una de las
-  // categorías fijas de arriba (comparación sin acentos/mayúsculas). Si no
-  // coincide con ninguna pero sí trae texto, se trata como "Otro" con ese
-  // texto como valor personalizado.
+  // categorías fijas de arriba (comparación sin acentos/mayúsculas/palabras
+  // conectoras). Si no coincide con ninguna pero sí trae texto, se trata como
+  // "Otro" con ese texto como valor personalizado.
   function matchTipoIncidencia_(rawTipo) {
     const raw = cleanText(rawTipo);
     if (!raw) return { select: "", custom: "" };
-    const norm = normalizeText(raw);
-    const found = TIPOS_INCIDENCIA.find(t => t !== "Otro" && normalizeText(t) === norm);
+    const norm = normalizeTipoParaComparar_(raw);
+    const found = TIPOS_INCIDENCIA.find(t => t !== "Otro" && normalizeTipoParaComparar_(t) === norm);
     if (found) return { select: found, custom: "" };
     return { select: "Otro", custom: raw };
   }
@@ -904,7 +918,7 @@
   function bindEvents() {
     ["filterMonth","filterClub","filterRole","filterShift","filterCriterion"]
       .forEach(id => document.getElementById(id).addEventListener("change", renderAll));
-    ["commentClub","commentMonth","commentRole","commentShift"]
+    ["commentClub","commentMonth","commentRole","commentShift","commentTipo"]
       .forEach(id => document.getElementById(id).addEventListener("change", renderComments));
     document.getElementById("avanceMonth").addEventListener("change", renderAvance);
     document.getElementById("avanceClub").addEventListener("change", renderAvance);
@@ -1215,11 +1229,15 @@
         G:  scoreG(get(idx.G))
       };
 
-      // Unique ID for comment tracking
-      const commentId = btoa(encodeURIComponent(
-        (typeof fecha === "object" && fecha ? fecha.toISOString().slice(0,10) : String(fecha)) +
-        "|" + club + "|" + colaborador + "|" + comentarios.slice(0,30)
-      )).slice(0,24);
+      // [FIX 2026-07-02] Antes el ID se generaba con fecha+club+colaborador+
+      // inicio del comentario. Si dos comentarios del mismo colaborador (p.ej.
+      // evaluado varias veces en distintos meses por el mismo embajador) tenían
+      // texto parecido, el ID colisionaba y ambos compartían el mismo estado:
+      // marcar uno como "atendido" con fecha marcaba también al otro. Ahora se
+      // usa el índice real de fila dentro de gviz (gvizRowIndex), que es único
+      // por definición y además es el mismo valor que ya se usa para escribir
+      // la resolución en la hoja de origen — no hay forma de que colisione.
+      const commentId = "row" + gvizIndex;
 
       rows.push({ club, mes, embajador, colaborador, rol, turno,
                   criterios, comentarios, tipoReporteSheet: tipoReporte, fecha, commentId, gvizRowIndex: gvizIndex });
@@ -1265,6 +1283,7 @@
     const comRows = respuestas.filter(r=>isRelevantComment(r.comentarios));
     keepOrFill("commentRole",  ["Todos",...unique(comRows.map(d=>d.rol)).sort()]);
     keepOrFill("commentShift", ["Todos",...unique(comRows.map(d=>d.turno)).sort()]);
+    keepOrFill("commentTipo",  ["Todos",...TIPOS_INCIDENCIA]);
     keepOrFill("avanceMonth",  ["Todos",...MONTHS]);
     keepOrFill("avanceClub",   ["Todos",...CLUBS]);
   }
@@ -1638,17 +1657,35 @@
     const month = document.getElementById("commentMonth").value || "Todos";
     const role  = document.getElementById("commentRole").value  || "Todos";
     const shift = document.getElementById("commentShift").value || "Todos";
+    const tipoFiltro = document.getElementById("commentTipo").value || "Todos";
 
-    let rows = respuestas.filter(item =>
+    // Categoría efectiva de un comentario: lo que CH haya editado manualmente,
+    // o si no, la clasificación que trae el Sheet.
+    const categoriaEfectiva = (item) => {
+      const state = comentStates[item.commentId] || {};
+      const efectivo = state.tipo || item.tipoReporteSheet || "";
+      if (!efectivo) return "";
+      const { select } = matchTipoIncidencia_(efectivo);
+      return select || "Otro";
+    };
+
+    // [MODIFICADO 2026-07-02] "base" = todo lo que cumple los filtros de
+    // arriba (club/mes/rol/turno/tipo), antes de separar por pestaña
+    // pendientes/resueltos/todos — se usa para el resumen de incidencias.
+    const base = respuestas.filter(item =>
       (club  ==="Todos" || item.club  ===club)  &&
       (month ==="Todos" || item.mes   ===month) &&
       (role  ==="Todos" || item.rol   ===role)  &&
       (shift ==="Todos" || item.turno ===shift) &&
+      (tipoFiltro === "Todos" || categoriaEfectiva(item) === tipoFiltro) &&
       isRelevantComment(item.comentarios) &&
       !hiddenComments[item.commentId] // [NUEVO] (3) Botón "Ocultar de la vista"
     );
 
+    renderResumenIncidencias_(base);
+
     // Filter by tab
+    let rows = base;
     if (activeTab === "pendientes") {
       rows = rows.filter(r => !comentStates[r.commentId]?.resolved);
     } else if (activeTab === "resueltos") {
@@ -1737,59 +1774,40 @@
           </div>
         </div>`;
     }).join("");
-
-    renderTipoIncidenciaResumen();
   }
 
-  // [NUEVO 2026-07-02] Resumen de comentarios relevantes clasificados por tipo
-  // de incidencia y mes (independiente de los filtros de pestaña/club/turno,
-  // para tener una vista global de cuántos casos de cada tipo hubo por mes).
-  function renderTipoIncidenciaResumen() {
+  // [MODIFICADO 2026-07-02] Resumen simple: cuántas incidencias cumplen los
+  // filtros actuales (club/mes/rol/turno/tipo) y cuántas de esas ya están
+  // atendidas por CH. Reemplaza la tabla de desglose por tipo/mes, que no
+  // aportaba valor.
+  function renderResumenIncidencias_(base) {
     const el = document.getElementById("tipoIncidenciaSummary");
     if (!el) return;
 
-    const categorias = [...TIPOS_INCIDENCIA.filter(t => t !== "Otro"), "Otro", "Sin clasificar"];
-    const counts = {};
-    MONTHS.forEach(m => { counts[m] = {}; categorias.forEach(c => counts[m][c] = 0); });
+    const total = base.length;
+    const atendidas = base.filter(r => !!comentStates[r.commentId]?.resolved).length;
+    const pendientes = total - atendidas;
+    const pct = total > 0 ? Math.round((atendidas / total) * 100) : 0;
 
-    respuestas.filter(r => isRelevantComment(r.comentarios)).forEach(r => {
-      const state = comentStates[r.commentId] || {};
-      const efectivo = state.tipo || r.tipoReporteSheet || "";
-      let cat = "Sin clasificar";
-      if (efectivo) {
-        const { select } = matchTipoIncidencia_(efectivo);
-        cat = select || "Otro";
-      }
-      if (counts[r.mes]) counts[r.mes][cat]++;
-    });
-
-    const totals = {};
-    categorias.forEach(c => totals[c] = MONTHS.reduce((s, m) => s + counts[m][c], 0));
-    const grandTotal = categorias.reduce((s, c) => s + totals[c], 0);
-
-    if (!grandTotal) {
-      el.innerHTML = `<div class="empty" style="margin-bottom:16px;">Aún no hay comentarios clasificados por tipo de incidencia.</div>`;
+    if (!total) {
+      el.innerHTML = `<div class="empty" style="margin-bottom:16px;">No hay incidencias para la selección actual.</div>`;
       return;
     }
 
-    const headerCells = categorias.map(c => `<th>${escapeHtml(c)}</th>`).join("");
-    const bodyRows = MONTHS.map(m => {
-      const total = categorias.reduce((s, c) => s + counts[m][c], 0);
-      if (!total) return "";
-      const cells = categorias.map(c => `<td style="text-align:center;">${counts[m][c] || "—"}</td>`).join("");
-      return `<tr><td>${m}</td>${cells}<td style="text-align:center;font-weight:700;">${total}</td></tr>`;
-    }).join("");
-    const totalRow = `<tr style="font-weight:800;background:#f8fbfd;">
-      <td>Total</td>${categorias.map(c => `<td style="text-align:center;">${totals[c] || "—"}</td>`).join("")}
-      <td style="text-align:center;">${grandTotal}</td></tr>`;
-
     el.innerHTML = `
-      <h3 style="font-size:16px;margin:0 0 10px;">Comentarios por tipo de incidencia y mes</h3>
-      <div class="table-wrap" style="margin-bottom:22px;">
-        <table class="progress-table">
-          <thead><tr><th>Mes</th>${headerCells}<th>Total</th></tr></thead>
-          <tbody>${bodyRows}${totalRow}</tbody>
-        </table>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
+        <div style="flex:1;min-width:140px;background:#fff;border:1px solid #e0e8ee;border-radius:10px;padding:14px 16px;">
+          <div style="font-size:12px;color:#5a7080;font-weight:700;margin-bottom:6px;">Incidencias</div>
+          <div style="font-size:24px;font-weight:800;color:#102033;">${total}</div>
+        </div>
+        <div style="flex:1;min-width:140px;background:#fff;border:1px solid #e0e8ee;border-radius:10px;padding:14px 16px;">
+          <div style="font-size:12px;color:#5a7080;font-weight:700;margin-bottom:6px;">Atendidas</div>
+          <div style="font-size:24px;font-weight:800;color:#13a56b;">${atendidas} <span style="font-size:14px;font-weight:700;color:#5a7080;">(${pct}%)</span></div>
+        </div>
+        <div style="flex:1;min-width:140px;background:#fff;border:1px solid #e0e8ee;border-radius:10px;padding:14px 16px;">
+          <div style="font-size:12px;color:#5a7080;font-weight:700;margin-bottom:6px;">Pendientes</div>
+          <div style="font-size:24px;font-weight:800;color:#c94032;">${pendientes}</div>
+        </div>
       </div>`;
   }
 
