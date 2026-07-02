@@ -1113,6 +1113,10 @@
       G:         find(eq("GAFETE"), 15, "Gafete"),
       motivoGafete: find(has("MOTIVO DE INASISTENCIA"), 16, "Motivo de inasistencia del gafete"),
       comentarios:  find((l) => has("TIPO DE REPORTE")(l) || has("CAPITAL HUMANO")(l), 17, "Comentarios de Capital Humano"),
+      // [NUEVO 2026-07-02] Columna S: explicación libre de la incidencia. Antes
+      // se ignoraba; ahora se combina con la clasificación (columna R) para
+      // formar el texto completo del comentario.
+      explicaIncidencia: find(has("EXPLICA INCIDENCIA"), 18, "Explica incidencia"),
       mes:       find(eq("MES"), 19, "Mes")
     };
 
@@ -1158,7 +1162,13 @@
       const mes        = normalizeMonth(get(idx.mes));
       if (!mes) { droppedNoMes++; continue; }
 
-      const comentarios = cleanText(get(idx.comentarios));
+      // [NUEVO 2026-07-02] Combina la clasificación (col R: Gafete/Uniforme/...)
+      // con la explicación libre (col S) para mostrar el comentario completo.
+      const tipoReporte = cleanText(get(idx.comentarios));
+      const explicaIncidencia = cleanText(get(idx.explicaIncidencia));
+      const comentarios = tipoReporte && explicaIncidencia
+        ? `[${tipoReporte}] ${explicaIncidencia}`
+        : (tipoReporte || explicaIncidencia);
 
       // Fecha del registro (col 0 — timestamp del formulario)
       let fecha = null;
