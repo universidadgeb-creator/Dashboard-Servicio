@@ -580,6 +580,31 @@
     .tab-btn.active { background:#007882; color:#fff; }
     .tab-content { display:none; }
     .tab-content.active { display:block; }
+
+    /* [NUEVO] (4) Panel de detalle de Gafete */
+    .criterion-card-clickable:hover { box-shadow: var(--shadow); transform: translateY(-2px); transition: all .15s ease; }
+    .gafete-modal-overlay {
+      position: fixed; inset: 0; background: rgba(16,32,51,0.55);
+      display:flex; align-items:center; justify-content:center; z-index: 1000; padding: 20px;
+    }
+    .gafete-modal-overlay.hidden { display:none; }
+    .gafete-modal {
+      background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow);
+      max-width: 760px; width: 100%; max-height: 85vh; overflow-y: auto; padding: 24px;
+    }
+    .gafete-modal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+    .gafete-modal-head h3 { margin:0; font-size:20px; }
+    .gafete-modal-head button {
+      border:none; background:#f3f7fb; border-radius:50%; width:32px; height:32px;
+      cursor:pointer; font-size:16px; color:#5a7080;
+    }
+    .gafete-modal-body { display:grid; grid-template-columns: 260px 1fr; gap:24px; align-items:center; }
+    .gafete-chart-wrap { position:relative; height:260px; }
+    .gafete-motivos-list { display:flex; flex-direction:column; gap:8px; }
+    .gafete-motivo-row { display:flex; justify-content:space-between; align-items:center;
+      padding:8px 12px; background:var(--surface-2); border-radius:10px; font-size:13px; }
+    .gafete-motivo-row .swatch { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; }
+    @media (max-width: 640px) { .gafete-modal-body { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -699,12 +724,33 @@
 
   </main>
 
+  <!-- [NUEVO] (4) Panel de detalle: motivos de falla de Gafete -->
+  <div id="gafeteModalOverlay" class="gafete-modal-overlay hidden" onclick="closeGafeteModalOnOverlay(event)">
+    <div class="gafete-modal">
+      <div class="gafete-modal-head">
+        <h3>Desglose de motivos — Gafete</h3>
+        <button type="button" id="gafeteModalClose" onclick="closeGafeteModal()">✕</button>
+      </div>
+      <p class="section-subtitle" style="margin:0 0 14px;">
+        Distribución de motivos de falla, calculada sobre la selección de filtros globales
+        (Mes, Sucursal, Turno) vigente en el dashboard.
+      </p>
+      <div class="gafete-modal-body">
+        <div class="gafete-chart-wrap"><canvas id="gafeteDonutChart"></canvas></div>
+        <div id="gafeteMotivosList" class="gafete-motivos-list"></div>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
 
 <script>
 
-  // Meta mensual de caminatas por rol y club (fuente: hoja "Plantilla y Meta")
-  const META = {
+  // [MODIFICADO] (2) Este objeto se usaba antes como única fuente de metas por
+  // rol. Ahora es solo un RESPALDO por si el backend no responde: la fuente
+  // real y dinámica es la pestaña "Plantilla y Meta", leída vía APPS_SCRIPT_URL
+  // (ver getMetaRolPara() más abajo).
+  const META_FALLBACK = {
     "Naciones Unidas": {
       "Caja": 3, "Caja estacionamiento": 3, "Coach deportivo": 16,
       "Concierge vestidores": 6, "Ejecutivo": 6, "Estiramiento": 8,
@@ -732,6 +778,14 @@
   const COMMENTS_PWD  = "ch1234";
   const JSONP_TIMEOUT = 20000;
 
+  // [NUEVO] URL del Web App de Apps Script (Codigo.gs) publicado como
+  // "Cualquier usuario, incluso anónimo". Reemplaza por tu URL real de
+  // despliegue (Implementar > Nueva implementación > Aplicación web).
+  // Alimenta: (1) cumplimiento real de caminatas por club, (2) metas por rol
+  // desde "Plantilla y Meta", (3) persistencia de resolución de comentarios,
+  // (4) motivos de falla de Gafete.
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/TU_ID_DE_DESPLIEGUE/exec";
+
   const MONTHS  = ["Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   const CLUBS   = ["Naciones Unidas","Gourmetería","Valle Real"];
   const CRITERIA = [
@@ -747,9 +801,31 @@
 
   // ─── ESTADO ──────────────────────────────────────────────────────────────────
   let respuestas    = [];
-  let comentStates  = {};  // { [commentId]: { resolved, resolvedDate } }
+  let comentStates  = {};  // { [commentId]: { resolved, resolvedDate, tipo } }
+  let hiddenComments = {}; // [NUEVO] (3) { [commentId]: true } — "Ocultar de la vista"
   let monthlyChart  = null;
   let activeTab     = "pendientes";
+
+  // [NUEVO] (1) Cumplimiento real de caminatas por club/mes, leído de la hoja
+  // "Caminatas realizadas" a través del backend (Codigo.gs).
+  let caminatasClubData = []; // [{club, clubCode, mes, meta, real, porcentaje, estado}, ...]
+
+  // [NUEVO] (2) Metas por rol leídas dinámicamente de "Plantilla y Meta".
+  // null hasta que el backend responda; se usa META_FALLBACK mientras tanto.
+  let metasRolData = null; // { "Naciones Unidas": { "Caja": 3, ... }, ... }
+
+  // [NUEVO] (4) Motivos de falla de Gafete, conteos brutos por club/mes/turno.
+  let motivosGafeteData = []; // [{club, mes, turno, motivo, conteo}, ...]
+  let gafeteChart = null;
+
+  // Devuelve las metas por rol de un club: usa datos dinámicos del backend si
+  // ya llegaron, si no, cae de vuelta al respaldo estático.
+  function getMetaRolPara(club) {
+    if (metasRolData && metasRolData[club] && Object.keys(metasRolData[club]).length) {
+      return metasRolData[club];
+    }
+    return META_FALLBACK[club] || {};
+  }
 
   Chart.register(ChartDataLabels);
 
@@ -769,12 +845,33 @@
     } catch(e) { console.error("Error guardando estados:", e); }
   }
 
+  // [NUEVO] (3) Botón "Ocultar de la vista" — solo local, no se persiste en Excel.
+  const HIDDEN_STORAGE_KEY = "ch_hidden_comments";
+  async function loadHiddenComments() {
+    try {
+      const raw = localStorage.getItem(HIDDEN_STORAGE_KEY);
+      hiddenComments = raw ? JSON.parse(raw) : {};
+    } catch(e) { hiddenComments = {}; }
+  }
+  async function saveHiddenComments() {
+    try {
+      localStorage.setItem(HIDDEN_STORAGE_KEY, JSON.stringify(hiddenComments));
+    } catch(e) { console.error("Error guardando comentarios ocultos:", e); }
+  }
+  function hideComment(id) {
+    hiddenComments[id] = true;
+    saveHiddenComments();
+    renderComments();
+  }
+
   // ─── INIT ────────────────────────────────────────────────────────────────────
   document.addEventListener("DOMContentLoaded", async () => {
     await loadCommentStates();
+    await loadHiddenComments();
     bindEvents();
     setupEmptyDashboard();
     loadData();
+    loadBackendData(); // [NUEVO] (1)(2)(3)(4) — en paralelo, no bloquea la carga principal
   });
 
   function bindEvents() {
@@ -784,7 +881,7 @@
       .forEach(id => document.getElementById(id).addEventListener("change", renderComments));
     document.getElementById("avanceMonth").addEventListener("change", renderAvance);
     document.getElementById("avanceClub").addEventListener("change", renderAvance);
-    document.getElementById("refreshTopBtn").addEventListener("click", loadData);
+    document.getElementById("refreshTopBtn").addEventListener("click", () => { loadData(); loadBackendData(); });
     document.getElementById("clearFiltersBtn").addEventListener("click", () => {
       ["filterMonth","filterClub","filterRole","filterShift","filterCriterion"]
         .forEach(id => document.getElementById(id).value = "Todos");
@@ -835,46 +932,202 @@
     window[cbName] = function(data) {
       cleanup();
       try {
+        console.log("[gviz] Respuesta cruda recibida:", data);
         const table = data.table;
         if (!table || !table.rows) throw new Error("Sin datos");
         respuestas = parseGvizTable(table);
         populateFilters();
         renderAll();
         renderAvance();
-        showToast("✓ " + respuestas.length + " registros cargados.");
+        if (respuestas.length === 0 && table.rows.length > 0) {
+          // [NUEVO] Conexión OK pero el parseo descartó todo: probablemente
+          // cambiaron los encabezados del Form. Ver detalle en consola.
+          showToast(`⚠️ Se conectó al Sheet (${table.rows.length} filas) pero 0 pasaron el filtro. Revisa la consola (F12) para ver el detalle de columnas.`);
+        } else {
+          showToast("✓ " + respuestas.length + " registros cargados.");
+        }
       } catch(err) {
-        console.error(err);
+        console.error("[gviz] Error procesando datos:", err);
         showToast("Error al procesar datos: " + err.message);
       } finally { setLoading(false); }
     };
     timer = setTimeout(() => {
       cleanup(); setLoading(false);
+      console.error("[gviz] Timeout esperando respuesta de Google Sheets. SHEET_ID:", SHEET_ID, "GID_FORM:", GID_FORM);
       showToast("Tiempo agotado. Verifica que el Sheet sea público.");
     }, JSONP_TIMEOUT);
     const script = document.createElement("script");
     script.id = cbName;
     script.onerror = () => {
       cleanup(); setLoading(false);
+      console.error("[gviz] No se pudo cargar el script JSONP de Google Sheets. Verifica que el Sheet esté compartido como \"Cualquier usuario con el enlace puede ver\" y que SHEET_ID/GID_FORM sean correctos.", SHEET_ID, GID_FORM);
       showToast("No se pudo conectar. Verifica permisos del Sheet.");
     };
     script.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${cbName}&gid=${GID_FORM}&t=${Date.now()}`;
     document.body.appendChild(script);
   }
 
+  /* ============================================================================
+   * [NUEVO] CARGA DEL BACKEND (Codigo.gs) — puntos (1), (2), (3) y (4)
+   * Se llama vía JSONP (igual patrón que loadData) para evitar problemas de
+   * CORS, tanto para lectura como para "escritura" (saveResolution).
+   * ==========================================================================*/
+  function callAppsScript(action, extraParams) {
+    return new Promise((resolve) => {
+      if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf("TU_ID_DE_DESPLIEGUE") >= 0) {
+        // No configurado todavía: falla silenciosamente y se usan respaldos locales.
+        resolve(null);
+        return;
+      }
+      const cbName = "_appsScriptCb_" + Date.now() + "_" + Math.floor(Math.random()*1e6);
+      let timer = null;
+      function cleanup() {
+        clearTimeout(timer);
+        const s = document.getElementById(cbName);
+        if (s) s.remove();
+        try { delete window[cbName]; } catch(e) {}
+      }
+      window[cbName] = function(data) {
+        cleanup();
+        if (!data) {
+          console.warn(`[Codigo.gs] action=${action} devolvió una respuesta vacía/nula.`);
+        } else if (!data.ok) {
+          console.error(`[Codigo.gs] action=${action} falló:`, data.message || data);
+        }
+        resolve(data && data.ok ? data.data : null);
+      };
+      timer = setTimeout(() => {
+        cleanup();
+        console.warn(`[Codigo.gs] action=${action} agotó el tiempo de espera (${JSONP_TIMEOUT}ms). Verifica APPS_SCRIPT_URL y que el Web App esté implementado con acceso "Cualquier usuario".`);
+        resolve(null);
+      }, JSONP_TIMEOUT);
+      const params = new URLSearchParams({ action, callback: cbName, t: Date.now(), ...(extraParams||{}) });
+      const script = document.createElement("script");
+      script.id = cbName;
+      script.onerror = () => {
+        cleanup();
+        console.error(`[Codigo.gs] No se pudo cargar el script de action=${action}. Verifica APPS_SCRIPT_URL:`, APPS_SCRIPT_URL);
+        resolve(null);
+      };
+      script.src = `${APPS_SCRIPT_URL}?${params.toString()}`;
+      document.body.appendChild(script);
+    });
+  }
+
+  async function loadBackendData() {
+    const [cumplimiento, metasRol, motivos, resoluciones] = await Promise.all([
+      callAppsScript("cumplimientoMensualSucursal"), // (1)
+      callAppsScript("metasRol"),                    // (2)
+      callAppsScript("motivosGafete"),                // (4)
+      callAppsScript("resoluciones")                  // (3)
+    ]);
+
+    if (cumplimiento && cumplimiento.cumplimientoMensualSucursal) {
+      caminatasClubData = cumplimiento.cumplimientoMensualSucursal;
+    }
+    if (metasRol && metasRol.metasRol) {
+      metasRolData = metasRol.metasRol;
+    }
+    if (motivos && motivos.motivosGafete) {
+      motivosGafeteData = motivos.motivosGafete;
+    }
+    if (resoluciones && resoluciones.resoluciones) {
+      mergeResolucionesPersistidas_(resoluciones.resoluciones);
+    }
+
+    // Vuelve a pintar todo con los datos ya corregidos/dinámicos.
+    renderAll();
+    renderAvance();
+  }
+
+  // [NUEVO] (3) Cruza las resoluciones ya guardadas en Excel (por índice de
+  // fila gviz) con los comentarios ya parseados (por commentId), para que el
+  // dashboard reclasifique automáticamente lo ya resuelto sin depender solo
+  // de localStorage.
+  function mergeResolucionesPersistidas_(resolucionesBackend) {
+    if (!respuestas.length || !resolucionesBackend.length) return;
+    const byRowIndex = {};
+    respuestas.forEach(r => { byRowIndex[r.gvizRowIndex] = r; });
+
+    resolucionesBackend.forEach(res => {
+      const r = byRowIndex[res.gvizRowIndex];
+      if (!r) return;
+      const prev = comentStates[r.commentId] || {};
+      comentStates[r.commentId] = {
+        resolved: !!res.fecha,
+        resolvedDate: res.fecha || prev.resolvedDate || "",
+        tipo: res.tipo || prev.tipo || ""
+      };
+    });
+    saveCommentStates();
+  }
+
   // ─── PARSEO GVIZ ─────────────────────────────────────────────────────────────
-  // Cols: 0=timestamp 1=score 2=club 3=embNAC 4=embGMT 5=embVR 6=colaborador
-  //       7=rol 8=turno 9=H 10=P 11=A 12=LU 13=U 14=C 15=G
-  //       16=motivoGafete 17=comentarios 18=mes
+  // [MODIFICADO — FIX 2026-07-02] Antes los índices de columna estaban
+  // "quemados" en el código (ej. MES = índice 19), basados en una copia
+  // exportada del Excel en un momento dado. Si el Google Form real agrega,
+  // quita o reordena una pregunta, esos índices quedan desalineados y TODAS
+  // las filas se descartan silenciosamente (mes="" → se ignora la fila),
+  // lo que se ve como "0 registros cargados" con los selectores vacíos.
+  //
+  // Ahora los índices se resuelven de forma DINÁMICA leyendo los encabezados
+  // reales que manda gviz (table.cols[i].label), y solo se usa el índice fijo
+  // como último recurso si no se encuentra el encabezado esperado. Así el
+  // dashboard sigue funcionando aunque cambie el orden de las columnas.
+  function resolveGvizColumns_(table) {
+    const cols = (table.cols || []).map(c => normalizeText(c && c.label || ""));
+
+    function find(matcher, fallbackIdx, fieldName) {
+      for (let i = 0; i < cols.length; i++) {
+        if (matcher(cols[i])) return i;
+      }
+      console.warn(`[gviz] No se encontró encabezado para "${fieldName}", usando índice de respaldo ${fallbackIdx}. Encabezados detectados:`, cols);
+      return fallbackIdx;
+    }
+    const eq  = (txt) => (label) => label === txt;
+    const has = (txt) => (label) => label.indexOf(txt) >= 0;
+
+    const idx = {
+      timestamp: 0,
+      club:      find(has("SUCURSAL"), 2, "Club/Sucursal"),
+      emb1:      find((l) => has("SELECCIONA TU NOMBRE")(l) && !/[23]/.test(l), 3, "Embajador (bloque 1)"),
+      emb2:      find((l) => has("SELECCIONA TU NOMBRE")(l) && l.indexOf("2") >= 0, 4, "Embajador (bloque 2)"),
+      emb3:      find((l) => has("SELECCIONA TU NOMBRE")(l) && l.indexOf("3") >= 0, 5, "Embajador (bloque 3)"),
+      colaborador: find(has("NOMBRE DEL EVALUADO"), 6, "Colaborador evaluado"),
+      rol:       find(has("ROL A EVALU"), 7, "Rol"),
+      turno:     find(has("TURNO"), 8, "Turno"),
+      H:         find(has("HIGIENE DE MANOS"), 9, "Higiene de manos"),
+      P:         find(eq("PEINADO"), 10, "Peinado"),
+      A:         find(eq("ACCESORIOS"), 11, "Accesorios"),
+      LU:        find(has("LIMPIEZA Y ESTADO DEL UNIFORME"), 12, "Limpieza y estado del uniforme"),
+      U:         find(eq("UNIFORME"), 13, "Uniforme"),
+      C:         find(eq("CALZADO"), 14, "Calzado"),
+      G:         find(eq("GAFETE"), 15, "Gafete"),
+      motivoGafete: find(has("MOTIVO DE INASISTENCIA"), 16, "Motivo de inasistencia del gafete"),
+      comentarios:  find((l) => has("TIPO DE REPORTE")(l) || has("CAPITAL HUMANO")(l), 17, "Comentarios de Capital Humano"),
+      mes:       find(eq("MES"), 19, "Mes")
+    };
+
+    console.log("[gviz] Encabezados reales:", cols);
+    console.log("[gviz] Índices de columna resueltos:", idx);
+
+    return idx;
+  }
+
   function parseGvizTable(table) {
     const rows = [];
+    const idx = resolveGvizColumns_(table); // [MODIFICADO] resolución dinámica de columnas
+    let gvizIndex = -1; // [NUEVO] (3) índice 0-based dentro de table.rows, para persistencia
+    let droppedNoClub = 0, droppedNoMes = 0;
     for (const row of table.rows) {
-      const get = (idx) => {
-        const cell = row.c && row.c[idx];
+      gvizIndex++;
+      const get = (i) => {
+        const cell = row.c && row.c[i];
         if (!cell || cell.v === null || cell.v === undefined) return "";
         return String(cell.v).trim();
       };
-      const getDate = (idx) => {
-        const cell = row.c && row.c[idx];
+      const getDate = (i) => {
+        const cell = row.c && row.c[i];
         if (!cell || cell.v === null) return null;
         // gviz dates come as "Date(year,month,day,...)"
         if (typeof cell.v === "string" && cell.v.startsWith("Date(")) {
@@ -885,23 +1138,23 @@
         return null;
       };
 
-      const clubRaw    = get(2);
+      const clubRaw    = get(idx.club);
       const club       = normalizeClub(clubRaw);
-      if (!club) continue;
+      if (!club) { droppedNoClub++; continue; }
 
-      const emb1 = get(3), emb2 = get(4), emb3 = get(5);
+      const emb1 = get(idx.emb1), emb2 = get(idx.emb2), emb3 = get(idx.emb3);
       const embajador  = cleanText(emb1 || emb2 || emb3);
-      const colaborador= cleanText(get(6));
-      const rol        = cleanText(get(7));
-      const turno      = normalizeShift(get(8));
-      const mes        = normalizeMonth(get(18));
-      if (!mes) continue;
+      const colaborador= cleanText(get(idx.colaborador));
+      const rol        = cleanText(get(idx.rol));
+      const turno      = normalizeShift(get(idx.turno));
+      const mes        = normalizeMonth(get(idx.mes));
+      if (!mes) { droppedNoMes++; continue; }
 
-      const comentarios = cleanText(get(17));
+      const comentarios = cleanText(get(idx.comentarios));
 
       // Fecha del registro (col 0 — timestamp del formulario)
       let fecha = null;
-      const tsCell = row.c && row.c[0];
+      const tsCell = row.c && row.c[idx.timestamp];
       if (tsCell) {
         if (typeof tsCell.v === "string" && tsCell.v.startsWith("Date(")) {
           const parts = tsCell.v.replace("Date(","").replace(")","").split(",").map(Number);
@@ -912,13 +1165,13 @@
       }
 
       const criterios = {
-        H:  scoreH(get(9)),
-        P:  scoreP(get(10)),
-        A:  scoreA(get(11)),
-        LU: scoreLU(get(12)),
-        U:  scoreU(get(13)),
-        C:  scoreC(get(14)),
-        G:  scoreG(get(15))
+        H:  scoreH(get(idx.H)),
+        P:  scoreP(get(idx.P)),
+        A:  scoreA(get(idx.A)),
+        LU: scoreLU(get(idx.LU)),
+        U:  scoreU(get(idx.U)),
+        C:  scoreC(get(idx.C)),
+        G:  scoreG(get(idx.G))
       };
 
       // Unique ID for comment tracking
@@ -928,7 +1181,15 @@
       )).slice(0,24);
 
       rows.push({ club, mes, embajador, colaborador, rol, turno,
-                  criterios, comentarios, fecha, commentId });
+                  criterios, comentarios, fecha, commentId, gvizRowIndex: gvizIndex });
+    }
+    // [NUEVO] Diagnóstico visible en consola si el resultado queda en 0 filas
+    if (!rows.length && table.rows.length) {
+      console.error(
+        `[gviz] Se recibieron ${table.rows.length} filas de Google Sheets pero 0 pasaron el parseo ` +
+        `(${droppedNoClub} sin club válido, ${droppedNoMes} sin mes válido). ` +
+        `Revisa los encabezados reales logueados arriba contra los que espera resolveGvizColumns_().`
+      );
     }
     return rows;
   }
@@ -991,6 +1252,8 @@
     renderKpis(filtered);
     renderCriteriaCards(filtered);
     renderComments();
+    // [NUEVO] (4) si el panel de Gafete está abierto, se actualiza con los filtros vigentes
+    if (isGafeteModalOpen()) renderGafeteDonut();
   }
 
   function getFilteredData() {
@@ -1010,14 +1273,36 @@
     });
   }
 
+  // [MODIFICADO] (1) CORRECCIÓN DE ORIGEN: esta tarjeta antes mostraba el
+  // cumplimiento de la política de APARIENCIA (calcGeneral, criterios H/P/A/...)
+  // rotulado como "Cumplimiento mensual de caminatas", lo que producía el
+  // desfase reportado (p.ej. 98% en vez de 28%). Ahora usa el conteo real de
+  // caminatas contra la Meta mensual del club, leído de la hoja
+  // "Caminatas realizadas" a través del backend (caminatasClubData).
+  function getCumplimientoCaminatasClub_(club) {
+    const month = document.getElementById("filterMonth").value;
+    const registros = caminatasClubData.filter(r => r.club === club && (month === "Todos" || r.mes === month));
+
+    if (!registros.length) {
+      return { pct: 0, real: 0, meta: 0, estado: "Sin datos" };
+    }
+
+    const meta = registros.reduce((s, r) => s + (r.meta || 0), 0);
+    const real = registros.reduce((s, r) => s + (r.real || 0), 0);
+    const pct  = meta > 0 ? Math.round((real / meta) * 100) : 0;
+    const estado = registros.length === 1 ? registros[0].estado : getState(pct, real);
+
+    return { pct, real, meta, estado };
+  }
+
   function renderClubCards(filtered) {
     const c = document.getElementById("clubCards");
     c.innerHTML = "";
     CLUBS.forEach(club => {
       const rows = filtered.filter(r=>r.club===club);
-      const gen  = calcGeneral(rows);
-      const pct  = gen.percent ?? 0;
-      const st   = getState(pct, rows.length);
+      const cam  = getCumplimientoCaminatasClub_(club);
+      const pct  = cam.pct;
+      const st   = caminatasClubData.length ? cam.estado : "Sin datos";
       const col  = stateColor(st);
       const deg  = Math.min(pct,100)*3.6;
       const card = document.createElement("article");
@@ -1029,7 +1314,7 @@
         </div>
         <div>
           <h3>${club}</h3>
-          <p class="club-meta"><span><strong>Caminatas:</strong> ${rows.length}</span></p>
+          <p class="club-meta"><span><strong>Caminatas:</strong> ${cam.real}${cam.meta?(' / '+cam.meta):''}</span></p>
           <span class="badge ${badgeClass(st)}">${st}</span>
         </div>`;
       c.appendChild(card);
@@ -1044,7 +1329,7 @@
       label: club,
       data: MONTHS.map(m => {
         // % de cumplimiento de META de caminatas (real vs meta), no de política de apariencia
-        const metaClub = META[club] || {};
+        const metaClub = getMetaRolPara(club); // [MODIFICADO] (2) fuente dinámica
         let metaTotal = 0, realTotal = 0;
         Object.keys(metaClub).forEach(rol => {
           const meta = metaClub[rol];
@@ -1118,14 +1403,91 @@
       const deg = (pct||0)*3.6;
       const card = document.createElement("article");
       card.className = "criterion-card";
+      // [NUEVO] (4) La tarjeta de Gafete es cliqueable: abre el panel de detalle
+      const isGafete = cr.key === "G";
+      if (isGafete) {
+        card.classList.add("criterion-card-clickable");
+        card.style.cursor = "pointer";
+        card.title = "Ver desglose de motivos de Gafete";
+        card.addEventListener("click", openGafeteModal);
+      }
       card.innerHTML = `
         <div class="donut" style="background:radial-gradient(circle at center,#fff 0 58%,transparent 59%),
           conic-gradient(${col} 0deg,${col} ${deg}deg,#e8eef2 ${deg}deg 360deg);">
           <strong>${pct===null?"0":pct}%</strong>
         </div>
-        <h3>${cr.name}</h3><p>${cr.description}</p>
+        <h3>${cr.name}${isGafete ? ' 🔍' : ''}</h3><p>${cr.description}</p>
         <span class="badge ${badgeClass(st)}">${st}</span>`;
       c.appendChild(card);
+    });
+  }
+
+  // ─── (4) PANEL DE DETALLE DE GAFETE ─────────────────────────────────────────
+  function openGafeteModal() {
+    document.getElementById("gafeteModalOverlay").classList.remove("hidden");
+    renderGafeteDonut();
+  }
+  function closeGafeteModal() {
+    document.getElementById("gafeteModalOverlay").classList.add("hidden");
+  }
+  function closeGafeteModalOnOverlay(evt) {
+    if (evt.target.id === "gafeteModalOverlay") closeGafeteModal();
+  }
+  function isGafeteModalOpen() {
+    const el = document.getElementById("gafeteModalOverlay");
+    return el && !el.classList.contains("hidden");
+  }
+
+  // Lee los conteos brutos (motivosGafeteData) y calcula el % de cada motivo
+  // en tiempo real, respetando los filtros globales del dashboard.
+  function renderGafeteDonut() {
+    const month = document.getElementById("filterMonth").value;
+    const club  = document.getElementById("filterClub").value;
+    const shift = document.getElementById("filterShift").value;
+
+    const filtered = motivosGafeteData.filter(m =>
+      (month === "Todos" || m.mes   === month) &&
+      (club  === "Todos" || m.club  === club)  &&
+      (shift === "Todos" || m.turno === shift)
+    );
+
+    const totals = {};
+    filtered.forEach(m => { totals[m.motivo] = (totals[m.motivo]||0) + m.conteo; });
+    const totalSum = Object.values(totals).reduce((a,b)=>a+b, 0);
+
+    const listEl = document.getElementById("gafeteMotivosList");
+    const colors = ["#007882","#7cd4d2","#9ee1e1","#d99a16","#c94032","#13a56b","#5a7080","#98a2b3"];
+
+    if (!totalSum) {
+      listEl.innerHTML = `<div class="empty">Sin datos de motivos de Gafete para esta selección.
+        (Verifica que la hoja "Motivos Gafete" exista y tenga el formato esperado.)</div>`;
+      if (gafeteChart) { gafeteChart.destroy(); gafeteChart = null; }
+      return;
+    }
+
+    const labels = Object.keys(totals);
+    const values = labels.map(k => totals[k]);
+    const pcts   = values.map(v => Math.round((v/totalSum)*100));
+
+    listEl.innerHTML = labels.map((label, i) => `
+      <div class="gafete-motivo-row">
+        <span><span class="swatch" style="background:${colors[i%colors.length]}"></span>${escapeHtml(label)}</span>
+        <strong>${pcts[i]}% <span style="color:#98a2b3;font-weight:400;">(${values[i]})</span></strong>
+      </div>`).join("");
+
+    const ctx = document.getElementById("gafeteDonutChart").getContext("2d");
+    if (gafeteChart) gafeteChart.destroy();
+    gafeteChart = new Chart(ctx, {
+      type: "doughnut",
+      data: { labels, datasets: [{ data: values, backgroundColor: labels.map((_,i)=>colors[i%colors.length]) }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display:false },
+          datalabels: { color:"#fff", font:{weight:"700",size:11}, formatter:(v)=> Math.round((v/totalSum)*100)+"%" },
+          tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed} (${Math.round((ctx.parsed/totalSum)*100)}%)` } }
+        }
+      }
     });
   }
 
@@ -1142,7 +1504,7 @@
     let summaryHtml = "";
     if (mes !== "Todos") {
       const summaryCards = clubsToShow.map(cl => {
-        const metaClub = META[cl] || {};
+        const metaClub = getMetaRolPara(cl); // [MODIFICADO] (2) fuente dinámica
         let metaTotal = 0, realTotal = 0;
         Object.keys(metaClub).forEach(rol => {
           metaTotal += metaClub[rol];
@@ -1164,7 +1526,7 @@
     // Collect rows
     const results = [];
     for (const cl of clubsToShow) {
-      const metaClub = META[cl] || {};
+      const metaClub = getMetaRolPara(cl); // [MODIFICADO] (2) fuente dinámica
       for (const rol of Object.keys(metaClub)) {
         const meta = metaClub[rol];
         if (meta === 0) continue;
@@ -1241,7 +1603,8 @@
       (month ==="Todos" || item.mes   ===month) &&
       (role  ==="Todos" || item.rol   ===role)  &&
       (shift ==="Todos" || item.turno ===shift) &&
-      isRelevantComment(item.comentarios)
+      isRelevantComment(item.comentarios) &&
+      !hiddenComments[item.commentId] // [NUEVO] (3) Botón "Ocultar de la vista"
     );
 
     // Filter by tab
@@ -1257,10 +1620,16 @@
       return;
     }
 
+    // [NUEVO] (3) Clasificación rápida: tipos de incidencia disponibles
+    const TIPOS_INCIDENCIA = ["Gafete", "Uniforme", "Calzado", "Presentación", "Otros"];
+
     container.innerHTML = rows.map(r => {
       const state       = comentStates[r.commentId] || {};
       const isResolved  = !!state.resolved;
       const resolvedDate= state.resolvedDate || "";
+      const tipo        = state.tipo || "";
+      // [MODIFICADO] (3) el checkbox solo puede habilitarse si ya hay fecha
+      const canCheck    = !!resolvedDate;
 
       // Format fecha del comentario
       let fechaStr = "—";
@@ -1279,6 +1648,10 @@
         daysHtml = `<span class="days-badge ${cls}">${diff} día${diff!==1?"s":""} de resolución</span>`;
       }
 
+      const tipoOptions = ["", ...TIPOS_INCIDENCIA].map(t =>
+        `<option value="${t}" ${t===tipo?"selected":""}>${t || "Tipo de incidencia..."}</option>`
+      ).join("");
+
       return `
         <div class="comment-row${isResolved?" resolved":""}" id="cr_${r.commentId}">
           <div class="comment-meta">
@@ -1292,36 +1665,69 @@
           </div>
           <div class="comment-body">💬 ${escapeHtml(r.comentarios)}</div>
           <div class="comment-actions">
-            <label>
+            <label title="${canCheck?'':'Primero ingresa la fecha de resolución'}">
               <input type="checkbox" onchange="toggleResolved('${r.commentId}', this.checked)"
-                ${isResolved?"checked":""}>
+                ${isResolved?"checked":""} ${!canCheck?"disabled":""}>
               Atendido por CH
             </label>
             <div style="display:flex;align-items:center;gap:8px;">
               <label style="font-weight:400;color:#5a7080;">Fecha resolución:</label>
               <input type="date" value="${resolvedDate}"
-                onchange="setResolvedDate('${r.commentId}', this.value)"
-                ${!isResolved?"disabled":""} />
+                onchange="setResolvedDate('${r.commentId}', '${r.gvizRowIndex}', this.value)" />
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <label style="font-weight:400;color:#5a7080;">Tipo:</label>
+              <select onchange="setTipoIncidencia('${r.commentId}', '${r.gvizRowIndex}', this.value)">
+                ${tipoOptions}
+              </select>
             </div>
             ${daysHtml}
+            <button type="button" class="hide-comment-btn" onclick="hideComment('${r.commentId}')"
+              style="margin-left:auto;background:none;border:1px solid #c5d4de;border-radius:6px;
+              padding:4px 10px;font-size:12px;color:#5a7080;cursor:pointer;">
+              🙈 Ocultar de la vista
+            </button>
           </div>
         </div>`;
     }).join("");
   }
 
+  // [MODIFICADO] (3) El checkbox solo puede marcarse una vez que ya existe una
+  // fecha de resolución (ver "canCheck" en renderComments / disabled del input).
   async function toggleResolved(id, checked) {
     if (!comentStates[id]) comentStates[id] = {};
     comentStates[id].resolved = checked;
-    if (!checked) comentStates[id].resolvedDate = "";
     await saveCommentStates();
     renderComments();
   }
 
-  async function setResolvedDate(id, date) {
+  // [MODIFICADO] (3) Al capturar la fecha: habilita el checkbox y persiste en
+  // Excel (columna nueva en la hoja de origen) vía el backend.
+  async function setResolvedDate(id, gvizRowIndex, date) {
     if (!comentStates[id]) comentStates[id] = {};
     comentStates[id].resolvedDate = date;
+    if (!date) comentStates[id].resolved = false; // sin fecha no puede quedar "atendido"
     await saveCommentStates();
+    await persistirResolucion_(gvizRowIndex, date, comentStates[id].tipo || "");
     renderComments();
+  }
+
+  // [NUEVO] (3) Clasificación rápida del tipo de incidencia — también se persiste.
+  async function setTipoIncidencia(id, gvizRowIndex, tipo) {
+    if (!comentStates[id]) comentStates[id] = {};
+    comentStates[id].tipo = tipo;
+    await saveCommentStates();
+    await persistirResolucion_(gvizRowIndex, comentStates[id].resolvedDate || "", tipo);
+  }
+
+  // [NUEVO] (3) Escribe fecha de resolución + tipo directamente en la hoja de
+  // origen (Excel) a través del backend, para que no se pierda al recargar.
+  async function persistirResolucion_(gvizRowIndex, fecha, tipo) {
+    if (gvizRowIndex === undefined || gvizRowIndex === null || gvizRowIndex === "undefined") return;
+    const result = await callAppsScript("saveResolution", { row: gvizRowIndex, fecha: fecha || "", tipo: tipo || "" });
+    if (!result) {
+      showToast("No se pudo guardar en el Excel (revisa la URL del backend). Se guardó localmente.");
+    }
   }
 
   // ─── CÁLCULOS ─────────────────────────────────────────────────────────────────
@@ -1373,6 +1779,10 @@
   }
 
   // ─── NORMALIZACIÓN ────────────────────────────────────────────────────────────
+  // [NUEVO] Helper genérico de normalización de texto (usado por resolveGvizColumns_)
+  function normalizeText(v) {
+    return String(v||"").trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");
+  }
   function normalizeClub(v) {
     const t = String(v||"").trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
     if (t.includes("NACIONES UNIDAS")||t==="NAC"||t==="NU") return "Naciones Unidas";
@@ -1425,7 +1835,13 @@
       "DE MOMENTO NO","DE MOMENTO NADA","POR EL MOMENTO NO","HASTA EL MOMENTO NO",
       "NO TODO BIEN","NO TODO MUY BIEN","NO TODO CORRECTO","NO TODO PERFECTO",
       "NO TODO SUPER BIEN","NO TODO MUCHO BIEN","NO NADA","NO POR AHORA",
-      "POR AHORA NO","POR AHORA NADA"
+      "POR AHORA NO","POR AHORA NADA",
+      // [NUEVO] (3) Filtro de comentarios basura: frases exactas solicitadas
+      "EJECUTIVA PREMIUM EXCELENTE",
+      "POR EL MOMENTO ESTA ALINEADA CORRECTAMENTE",
+      "NADA EN ABSOLUTO EL COLABORADOR PORTA TODO APROPIADAMENTE",
+      "NADA TODO MUY BIEN",
+      "NINGUNO EN PARTICULAR"
     ];
 
     if (irrelevantPhrases.includes(t)) return false;
