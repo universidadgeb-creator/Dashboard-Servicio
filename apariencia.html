@@ -1095,11 +1095,16 @@
     resolucionesBackend.forEach(res => {
       const r = byRowIndex[res.gvizRowIndex];
       if (!r) return;
-      const prev = comentStates[r.commentId] || {};
+      // [FIX 2026-07-07] El Excel es la fuente de verdad: antes, si el valor
+      // local (localStorage) ya tenía algo, se prefería sobre el del Excel
+      // aunque este último se hubiera borrado o corregido manualmente, dejando
+      // "pegado" para siempre un valor viejo (p.ej. un número escrito por
+      // error en la columna de tipo). Ahora el valor del Excel manda siempre
+      // que exista una resolución registrada para esa fila.
       comentStates[r.commentId] = {
         resolved: !!res.fecha,
-        resolvedDate: res.fecha || prev.resolvedDate || "",
-        tipo: res.tipo || prev.tipo || ""
+        resolvedDate: res.fecha || "",
+        tipo: res.tipo || ""
       };
     });
     saveCommentStates();
