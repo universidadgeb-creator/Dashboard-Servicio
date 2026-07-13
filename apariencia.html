@@ -737,7 +737,7 @@
       </div>
       <p class="section-subtitle" style="margin:0 0 14px;">
         Distribución de motivos de falla, calculada sobre la selección de filtros globales
-        (Mes, Sucursal, Turno) vigente en el dashboard.
+        (Mes, Sucursal, Rol, Turno) vigente en el dashboard.
       </p>
       <div class="gafete-modal-body">
         <div class="gafete-chart-wrap"><canvas id="gafeteDonutChart"></canvas></div>
@@ -1505,15 +1505,20 @@
 
   // Lee los conteos brutos (motivosGafeteData) y calcula el % de cada motivo
   // en tiempo real, respetando los filtros globales del dashboard.
+  // [MODIFICADO] (4) Ahora también respeta el filtro global de Rol
+  // (#filterRole), ya que la hoja "Gafete" ya trae el desglose por
+  // rol/turno/sucursal/motivo y el backend (Codigo.gs) expone el campo "rol".
   function renderGafeteDonut() {
     const month = document.getElementById("filterMonth").value;
     const club  = document.getElementById("filterClub").value;
     const shift = document.getElementById("filterShift").value;
+    const role  = document.getElementById("filterRole").value;
 
     const filtered = motivosGafeteData.filter(m =>
       (month === "Todos" || m.mes   === month) &&
       (club  === "Todos" || m.club  === club)  &&
-      (shift === "Todos" || m.turno === shift)
+      (shift === "Todos" || m.turno === shift) &&
+      (role  === "Todos" || m.rol   === role)
     );
 
     const totals = {};
@@ -1524,8 +1529,7 @@
     const colors = ["#007882","#7cd4d2","#9ee1e1","#d99a16","#c94032","#13a56b","#5a7080","#98a2b3"];
 
     if (!totalSum) {
-      listEl.innerHTML = `<div class="empty">Sin datos de motivos de Gafete para esta selección.
-        (Verifica que la hoja "Motivos Gafete" exista y tenga el formato esperado.)</div>`;
+      listEl.innerHTML = `<div class="empty">Sin incidencias de Gafete para esta selección de Mes/Sucursal/Rol/Turno.</div>`;
       if (gafeteChart) { gafeteChart.destroy(); gafeteChart = null; }
       return;
     }
