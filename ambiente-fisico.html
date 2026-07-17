@@ -445,8 +445,173 @@
       line-height:1.4;
     }
 
+    .team-section{
+      margin-top:4px;
+    }
+
+    .team-unlock-grid{
+      display:grid;
+      grid-template-columns:minmax(220px,380px) auto;
+      gap:12px;
+      align-items:end;
+    }
+
+    .team-unlock-grid button{
+      border:0;
+      border-radius:13px;
+      min-height:46px;
+      padding:12px 18px;
+      background:var(--brand);
+      color:white;
+      font-weight:900;
+      font-size:14px;
+      cursor:pointer;
+    }
+
+    .team-unlock-grid button:hover{opacity:.92}
+
+    .hidden{display:none !important}
+
+    .team-select-row{
+      display:grid;
+      grid-template-columns:repeat(5,minmax(150px,1fr));
+      gap:14px;
+      margin-bottom:18px;
+    }
+
+    .team-summary{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:18px;
+    }
+
+    .team-summary-card{
+      flex:1;
+      min-width:150px;
+      background:white;
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:14px 16px;
+    }
+
+    .team-summary-card span{
+      display:block;
+      font-size:12px;
+      font-weight:800;
+      color:var(--gray);
+      text-transform:uppercase;
+      letter-spacing:.04em;
+      margin-bottom:6px;
+    }
+
+    .team-summary-card strong{
+      font-size:24px;
+      font-weight:900;
+    }
+
+    .incident-card{
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:white;
+      padding:16px 18px;
+      margin-bottom:14px;
+    }
+
+    .incident-card.resolved{
+      background:#f3faf4;
+      border-color:rgba(46,125,50,.25);
+    }
+
+    .incident-meta{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      font-size:13px;
+      color:#344054;
+      margin-bottom:10px;
+    }
+
+    .incident-meta span strong{color:#111827}
+
+    .incident-title{
+      font-weight:900;
+      font-size:15px;
+      margin:0 0 4px;
+      color:#111827;
+    }
+
+    .incident-desc{
+      font-size:13px;
+      color:var(--gray);
+      margin:0 0 10px;
+    }
+
+    .incident-comment{
+      background:#f8fbfb;
+      border:1px solid #edf1f3;
+      border-radius:12px;
+      padding:10px 12px;
+      font-size:13px;
+      margin-bottom:12px;
+    }
+
+    .incident-actions{
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      gap:14px;
+      font-size:13px;
+    }
+
+    .incident-actions input[type="date"]{
+      border:1px solid #cfd8dd;
+      border-radius:10px;
+      padding:7px 10px;
+      font-size:13px;
+    }
+
+    .incident-comment-field{
+      width:100%;
+      border:1px solid #cfd8dd;
+      border-radius:12px;
+      padding:10px 12px;
+      font-size:13px;
+      font-family:inherit;
+      resize:vertical;
+      min-height:60px;
+      margin-bottom:12px;
+    }
+
+    .incident-comment-field:focus{
+      border-color:var(--brand);
+      outline:none;
+      box-shadow:0 0 0 3px rgba(0,120,130,.14);
+    }
+
+    .incident-sync-note{
+      font-size:11px;
+      color:var(--gray);
+      margin-top:4px;
+    }
+
+    .team-toast{
+      position:fixed;
+      right:18px;
+      bottom:18px;
+      z-index:100;
+      background:#102033;
+      color:white;
+      border-radius:14px;
+      padding:12px 16px;
+      font-size:14px;
+      max-width:340px;
+      box-shadow:0 10px 24px rgba(0,0,0,.25);
+    }
+
     @media(max-width:980px){
-      .filters,.grid-3,.club-cards,.criteria-grid{grid-template-columns:1fr}
+      .filters,.grid-3,.club-cards,.criteria-grid,.team-select-row{grid-template-columns:1fr}
+      .team-unlock-grid{grid-template-columns:1fr}
       .topbar{padding:16px;align-items:flex-start}
       .title-block h1{font-size:24px}
       .logo{width:88px;height:58px}
@@ -568,7 +733,61 @@
       </div>
       <div id="goals" class="goals"></div>
     </section>
+
+    <section class="section team-section">
+      <div class="section-head">
+        <div>
+          <h2>Mantenimiento y Limpieza | Incidencias por equipo</h2>
+          <p class="note">Acceso interno — cada equipo revisa y da seguimiento únicamente a sus propias incidencias detectadas en las caminatas.</p>
+        </div>
+      </div>
+
+      <div id="teamUnlockBox" class="team-unlock-grid">
+        <div>
+          <label>Contraseña</label>
+          <input id="teamPassword" type="password" placeholder="Ingresa la contraseña" />
+        </div>
+        <button id="teamUnlockBtn" type="button">Entrar</button>
+      </div>
+
+      <div id="teamPanel" class="hidden">
+        <div class="team-select-row">
+          <div>
+            <label>Equipo</label>
+            <select id="teamSelect">
+              <option value="Mantenimiento">Mantenimiento</option>
+              <option value="Limpieza">Limpieza</option>
+            </select>
+          </div>
+          <div>
+            <label>Mes</label>
+            <select id="teamMes"></select>
+          </div>
+          <div>
+            <label>Club</label>
+            <select id="teamClub"></select>
+          </div>
+          <div>
+            <label>Turno</label>
+            <select id="teamTurno"></select>
+          </div>
+          <div>
+            <label>Estado</label>
+            <select id="teamEstado">
+              <option value="pendientes">⏳ Pendientes</option>
+              <option value="resueltos">✅ Resueltos</option>
+              <option value="todos">Todos</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="teamSummary" class="team-summary"></div>
+        <div id="teamIncidents"></div>
+      </div>
+    </section>
   </main>
+
+  <div id="teamToast" class="team-toast hidden"></div>
 
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbz6WmHxuK6y39DWWUvhVwL7TMkoJs9jHQYTnm8g6MyyJvaUwf-rsuoMl1R6Dp60y8x3/exec";
@@ -641,6 +860,7 @@ Chart.register(labelPlugin);
 
 document.addEventListener("DOMContentLoaded", async () => {
   bindFilters();
+  bindTeamPanel();
   await loadData();
 });
 
@@ -660,8 +880,12 @@ async function loadData(){
 
     records = Array.isArray(payload.records) ? payload.records : [];
 
+    mergeSeguimientoIntoTeamStates(Array.isArray(payload.seguimiento) ? payload.seguimiento : []);
+
     setupFilters();
     render();
+    setupTeamFilters();
+    renderTeamPanel();
   }catch(err){
     showError("No se pudo cargar la información desde Apps Script. Revisa que la implementación esté publicada como aplicación web y con acceso para cualquier persona. Detalle: " + err.message);
   }finally{
@@ -1057,6 +1281,293 @@ function showError(msg){
     el.style.display = "block";
     el.textContent = msg;
   }
+}
+
+/****************************************************
+ * PANEL PROTEGIDO — MANTENIMIENTO Y LIMPIEZA
+ * Acceso interno por contraseña. Cada equipo revisa
+ * únicamente las incidencias (criterios incumplidos)
+ * que le corresponden según su categoría.
+ ****************************************************/
+
+const TEAM_PWD = "ambiente1234";
+
+const TEAM_CATEGORIES = {
+  "Mantenimiento": ["Mantenimiento"],
+  "Limpieza": ["5's", "Limpieza en Vestidores", "Limpieza General"]
+};
+
+const TEAM_STORAGE_KEY = "ambienteFisicoTeamStates";
+let teamStates = {};
+let teamIncidentIndex = {}; // id -> datos de la incidencia (para persistir en el Sheet)
+
+function loadTeamStates(){
+  try{
+    const raw = localStorage.getItem(TEAM_STORAGE_KEY);
+    teamStates = raw ? JSON.parse(raw) : {};
+  }catch(e){
+    teamStates = {};
+  }
+}
+
+function saveTeamStates(){
+  try{
+    localStorage.setItem(TEAM_STORAGE_KEY, JSON.stringify(teamStates));
+  }catch(e){
+    showTeamToast("No se pudo guardar el estado localmente (localStorage no disponible).");
+  }
+}
+
+function bindTeamPanel(){
+  loadTeamStates();
+
+  document.getElementById("teamUnlockBtn").addEventListener("click", unlockTeamPanel);
+  document.getElementById("teamPassword").addEventListener("keydown", e=>{
+    if(e.key === "Enter") unlockTeamPanel();
+  });
+
+  ["teamSelect","teamMes","teamClub","teamTurno","teamEstado"].forEach(id=>{
+    document.getElementById(id).addEventListener("change", renderTeamPanel);
+  });
+}
+
+function unlockTeamPanel(){
+  const val = document.getElementById("teamPassword").value.trim();
+  if(val !== TEAM_PWD){
+    showTeamToast("Contraseña incorrecta.");
+    return;
+  }
+  document.getElementById("teamUnlockBox").classList.add("hidden");
+  document.getElementById("teamPanel").classList.remove("hidden");
+  renderTeamPanel();
+}
+
+function setupTeamFilters(){
+  populate("teamMes", unique(records.map(r=>r.mes).filter(Boolean)).sort(sortMonths), "Todos los meses");
+  populate("teamClub", CLUBS, "Todos los clubes");
+  populate("teamTurno", unique(records.map(r=>r.turno).filter(Boolean)).sort(), "Todos los turnos");
+}
+
+// Construye la lista de incidencias: una por cada subcriterio incumplido
+// (cumplimiento === 0) dentro de las categorías del equipo seleccionado.
+function buildTeamIncidents(teamCategories){
+  const incidents = [];
+
+  records.forEach(record=>{
+    const criterios = record.criterios || {};
+    Object.values(criterios).forEach(c=>{
+      if(!teamCategories.includes(c.categoria)) return;
+      const score = normalizeScore(c.cumplimiento);
+      if(score !== 0) return; // solo incumplimientos son incidencias
+
+      const incident = {
+        id: `${record.id}_${c.key}`,
+        recordId: record.id,
+        club: record.club,
+        mes: record.mes,
+        turno: record.turno,
+        area: record.area,
+        embajador: record.embajador,
+        comentarios: record.comentarios,
+        criterioNombre: c.nombre,
+        criterioCategoria: c.categoria,
+        criterioRespuesta: c.respuesta
+      };
+
+      teamIncidentIndex[incident.id] = incident;
+      incidents.push(incident);
+    });
+  });
+
+  return incidents;
+}
+
+function renderTeamPanel(){
+  const panel = document.getElementById("teamPanel");
+  if(!panel || panel.classList.contains("hidden")) return;
+
+  const team = document.getElementById("teamSelect").value;
+  const mes = document.getElementById("teamMes").value;
+  const club = document.getElementById("teamClub").value;
+  const turno = document.getElementById("teamTurno").value;
+  const estado = document.getElementById("teamEstado").value;
+
+  const teamCategories = TEAM_CATEGORIES[team] || [];
+  let incidents = buildTeamIncidents(teamCategories).filter(i=>{
+    if(mes && i.mes !== mes) return false;
+    if(club && i.club !== club) return false;
+    if(turno && i.turno !== turno) return false;
+    return true;
+  });
+
+  renderTeamSummary(incidents);
+
+  if(estado === "pendientes"){
+    incidents = incidents.filter(i => !teamStates[i.id]?.resolved);
+  }else if(estado === "resueltos"){
+    incidents = incidents.filter(i => !!teamStates[i.id]?.resolved);
+  }
+
+  const wrap = document.getElementById("teamIncidents");
+  wrap.innerHTML = "";
+
+  if(!incidents.length){
+    wrap.innerHTML = `<div class="empty">No hay incidencias para esta selección.</div>`;
+    return;
+  }
+
+  incidents.forEach(i=>{
+    const state = teamStates[i.id] || {};
+    const isResolved = !!state.resolved;
+    const resolvedDate = state.resolvedDate || "";
+    const teamComment = state.comentario || "";
+    const canCheck = !!resolvedDate;
+    const desc = SUBCRITERION_DESCRIPTIONS[i.criterioNombre] || "";
+
+    const card = document.createElement("div");
+    card.className = "incident-card" + (isResolved ? " resolved" : "");
+    card.innerHTML = `
+      <div class="incident-meta">
+        <span>🏢 <strong>Club:</strong> ${escapeHtml(i.club || "Sin club")}</span>
+        <span>📋 <strong>Mes:</strong> ${escapeHtml(i.mes || "Sin mes")}</span>
+        <span>🕐 <strong>Turno:</strong> ${escapeHtml(i.turno || "Sin turno")}</span>
+        <span>💼 <strong>Área/Rol:</strong> ${escapeHtml(i.area || "Sin área")}</span>
+        <span>👤 <strong>Embajador:</strong> ${escapeHtml(i.embajador || "Sin dato")}</span>
+      </div>
+      <p class="incident-title">${escapeHtml(i.criterioCategoria)} · ${escapeHtml(i.criterioNombre)}</p>
+      ${desc ? `<p class="incident-desc">Estándar esperado: ${escapeHtml(desc)}</p>` : ""}
+      ${i.criterioRespuesta ? `<div class="incident-comment">📝 <strong>Respuesta registrada:</strong> ${escapeHtml(i.criterioRespuesta)}</div>` : ""}
+      ${i.comentarios ? `<div class="incident-comment">💬 <strong>Comentario de la caminata:</strong> ${escapeHtml(i.comentarios)}</div>` : ""}
+      <label style="font-weight:400;color:var(--gray);font-size:12px;display:block;margin-bottom:6px;">Comentario del equipo (acción tomada, pendientes, etc.)</label>
+      <textarea class="incident-comment-field" placeholder="Escribe aquí el seguimiento de ${escapeHtml(team)}..."
+        onchange="setTeamComment('${i.id}', this.value)">${escapeHtml(teamComment)}</textarea>
+      <div class="incident-actions">
+        <label title="${canCheck ? '' : 'Primero ingresa la fecha de resolución'}">
+          <input type="checkbox" ${isResolved ? "checked" : ""} ${!canCheck ? "disabled" : ""}
+            onchange="toggleTeamResolved('${i.id}', this.checked)" />
+          Resuelto por ${escapeHtml(team)}
+        </label>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label style="font-weight:400;color:var(--gray);">Fecha de resolución:</label>
+          <input type="date" value="${resolvedDate}" onchange="setTeamResolvedDate('${i.id}', this.value)" />
+        </div>
+      </div>
+      <div class="incident-sync-note" id="sync_${i.id}"></div>
+    `;
+    wrap.appendChild(card);
+  });
+}
+
+function renderTeamSummary(incidents){
+  const el = document.getElementById("teamSummary");
+  const total = incidents.length;
+  const resolved = incidents.filter(i => !!teamStates[i.id]?.resolved).length;
+  const pending = total - resolved;
+  const pct = total > 0 ? Math.round((resolved/total)*100) : 0;
+
+  if(!total){
+    el.innerHTML = `<div class="empty">No hay incidencias registradas para la selección actual.</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="team-summary-card">
+      <span>Incidencias</span>
+      <strong>${total}</strong>
+    </div>
+    <div class="team-summary-card">
+      <span>Resueltas</span>
+      <strong style="color:var(--green)">${resolved} <small style="font-size:14px;color:var(--gray);">(${pct}%)</small></strong>
+    </div>
+    <div class="team-summary-card">
+      <span>Pendientes</span>
+      <strong style="color:var(--red)">${pending}</strong>
+    </div>
+  `;
+}
+
+function toggleTeamResolved(id, checked){
+  if(!teamStates[id]) teamStates[id] = {};
+  teamStates[id].resolved = checked;
+  saveTeamStates();
+  persistIncidentState(id);
+  renderTeamPanel();
+}
+
+function setTeamResolvedDate(id, date){
+  if(!teamStates[id]) teamStates[id] = {};
+  teamStates[id].resolvedDate = date;
+  if(!date) teamStates[id].resolved = false;
+  saveTeamStates();
+  persistIncidentState(id);
+  renderTeamPanel();
+}
+
+function setTeamComment(id, value){
+  if(!teamStates[id]) teamStates[id] = {};
+  teamStates[id].comentario = value;
+  saveTeamStates();
+  persistIncidentState(id);
+}
+
+// Envía el estado actual de una incidencia (comentario, fecha, resuelto) al
+// Apps Script para que quede guardado en la hoja "Seguimiento Ambiente Fisico"
+// y no se pierda al actualizar la página.
+async function persistIncidentState(id){
+  const state = teamStates[id] || {};
+  const incident = teamIncidentIndex[id] || {};
+  const noteEl = document.getElementById(`sync_${id}`);
+
+  const body = {
+    action: "saveIncidentState",
+    id,
+    club: incident.club || "",
+    mes: incident.mes || "",
+    turno: incident.turno || "",
+    area: incident.area || "",
+    categoria: incident.criterioCategoria || "",
+    criterio: incident.criterioNombre || "",
+    comentario: state.comentario || "",
+    fecha: state.resolvedDate || "",
+    resuelto: !!state.resolved
+  };
+
+  if(noteEl) noteEl.textContent = "Guardando en Google Sheets...";
+
+  try{
+    const res = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if(!data || data.ok === false) throw new Error(data?.error || "Error desconocido");
+    if(noteEl) noteEl.textContent = "✓ Guardado en Google Sheets.";
+  }catch(err){
+    if(noteEl) noteEl.textContent = "⚠️ No se pudo guardar en el Sheet, se guardó localmente.";
+    showTeamToast("No se pudo sincronizar con Google Sheets: " + err.message);
+  }
+}
+
+// Al cargar el dashboard, el estado guardado en el Sheet (fuente de verdad)
+// sobreescribe la copia local en localStorage de este navegador.
+function mergeSeguimientoIntoTeamStates(seguimiento){
+  seguimiento.forEach(item=>{
+    if(!item || !item.id) return;
+    teamStates[item.id] = {
+      resolved: !!item.resuelto,
+      resolvedDate: item.fechaResolucion || "",
+      comentario: item.comentario || ""
+    };
+  });
+  saveTeamStates();
+}
+
+function showTeamToast(msg){
+  const el = document.getElementById("teamToast");
+  el.textContent = msg;
+  el.classList.remove("hidden");
+  clearTimeout(showTeamToast._t);
+  showTeamToast._t = setTimeout(()=> el.classList.add("hidden"), 3500);
 }
 </script>
 </body>
