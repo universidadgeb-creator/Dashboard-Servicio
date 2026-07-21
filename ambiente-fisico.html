@@ -757,6 +757,9 @@
             <select id="teamSelect">
               <option value="Mantenimiento">Mantenimiento</option>
               <option value="Limpieza">Limpieza</option>
+              <option value="5's">5's</option>
+              <option value="Servicio Premium">Servicio Premium</option>
+              <option value="Sistemas">Sistemas</option>
             </select>
           </div>
           <div>
@@ -1292,10 +1295,52 @@ function showError(msg){
 
 const TEAM_PWD = "ambiente1234";
 
-const TEAM_CATEGORIES = {
-  "Mantenimiento": ["Mantenimiento"],
-  "Limpieza": ["5's", "Limpieza en Vestidores", "Limpieza General"]
+// [ACTUALIZADO] Las incidencias ahora se arman directo desde la columna
+// "Explica Incidencia" (comentario libre del colaborador) y se clasifican
+// con la columna "Tipo de reporte que le quieras levantar", que puede traer
+// una o varias categorías separadas por coma o salto de línea (ej.
+// "Mantenimiento, Limpieza"). Ya no dependen de qué criterio específico
+// haya fallado en la caminata.
+const TEAM_TIPOS = ["Mantenimiento", "Limpieza", "5's", "Servicio Premium", "Sistemas"];
+
+// Identificador corto y estable de cada tipo, usado para armar el ID único
+// de cada incidencia (no debe cambiar entre versiones para no perder el
+// seguimiento ya guardado en el Sheet).
+const TEAM_TIPO_SLUG = {
+  "Mantenimiento": "mantenimiento",
+  "Limpieza": "limpieza",
+  "5's": "5s",
+  "Servicio Premium": "servicio_premium",
+  "Sistemas": "sistemas"
 };
+
+// Normaliza variantes de captura (typos, apóstrofes distintos, mayúsculas)
+// a uno de los 5 tipos válidos. Cualquier texto que no reconozca (por
+// ejemplo, cuando el colaborador escribió una descripción libre en vez de
+// elegir una categoría) se descarta: esa incidencia no queda clasificada y
+// no aparece en el panel de ningún equipo.
+const TEAM_TIPO_SINONIMOS = {
+  "mantenimiento": "Mantenimiento",
+  "mantenimeinto": "Mantenimiento",
+  "limpieza": "Limpieza",
+  "5s": "5's",
+  "5's": "5's",
+  "servicio premium": "Servicio Premium",
+  "sistemas": "Sistemas"
+};
+
+function parseTiposReporte(rawTipoReporte){
+  if(!rawTipoReporte) return [];
+  return rawTipoReporte
+    .split(/[,;\n]+/)
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(s => {
+      const key = s.toLowerCase().replace(/[’'´]/g, "'").trim();
+      return TEAM_TIPO_SINONIMOS[key] || null;
+    })
+    .filter(Boolean);
+}
 
 const TEAM_STORAGE_KEY = "ambienteFisicoTeamStates";
 let teamStates = {};
@@ -1348,35 +1393,39 @@ function setupTeamFilters(){
   populate("teamTurno", unique(records.map(r=>r.turno).filter(Boolean)).sort(), "Todos los turnos");
 }
 
-// Construye la lista de incidencias: una por cada subcriterio incumplido
-// (cumplimiento === 0) dentro de las categorías del equipo seleccionado.
-function buildTeamIncidents(teamCategories){
+// Construye la lista de incidencias: una por cada respuesta de la caminata
+// que tenga comentario en "Explica Incidencia" (columna R) Y que además
+// tenga marcado el tipo de reporte solicitado, en la columna "Tipo de
+// reporte que le quieras levantar" (columna AH). Si un comentario trae más
+// de un tipo (ej. "Mantenimiento, Limpieza"), se genera una incidencia
+// independiente por cada tipo, para que cada equipo le dé seguimiento por
+// separado. Los comentarios sin ningún tipo reconocido no generan
+// incidencia (no se muestran en ningún equipo).
+function buildTeamIncidents(tipoEquipo){
   const incidents = [];
 
   records.forEach(record=>{
-    const criterios = record.criterios || {};
-    Object.values(criterios).forEach(c=>{
-      if(!teamCategories.includes(c.categoria)) return;
-      const score = normalizeScore(c.cumplimiento);
-      if(score !== 0) return; // solo incumplimientos son incidencias
+    const comentario = (record.comentarios || "").trim();
+    if(!comentario) return;
 
-      const incident = {
-        id: `${record.id}_${c.key}`,
-        recordId: record.id,
-        club: record.club,
-        mes: record.mes,
-        turno: record.turno,
-        area: record.area,
-        embajador: record.embajador,
-        comentarios: record.comentarios,
-        criterioNombre: c.nombre,
-        criterioCategoria: c.categoria,
-        criterioRespuesta: c.respuesta
-      };
+    const tipos = parseTiposReporte(record.tipoReporte);
+    if(!tipos.includes(tipoEquipo)) return;
 
-      teamIncidentIndex[incident.id] = incident;
-      incidents.push(incident);
-    });
+    const slug = TEAM_TIPO_SLUG[tipoEquipo] || tipoEquipo;
+    const incident = {
+      id: `${record.id}_${slug}`,
+      recordId: record.id,
+      club: record.club,
+      mes: record.mes,
+      turno: record.turno,
+      area: record.area,
+      comentarios: comentario,
+      tipo: tipoEquipo,
+      fecha: record.fecha
+    };
+
+    teamIncidentIndex[incident.id] = incident;
+    incidents.push(incident);
   });
 
   return incidents;
@@ -1392,8 +1441,7 @@ function renderTeamPanel(){
   const turno = document.getElementById("teamTurno").value;
   const estado = document.getElementById("teamEstado").value;
 
-  const teamCategories = TEAM_CATEGORIES[team] || [];
-  let incidents = buildTeamIncidents(teamCategories).filter(i=>{
+  let incidents = buildTeamIncidents(team).filter(i=>{
     if(mes && i.mes !== mes) return false;
     if(club && i.club !== club) return false;
     if(turno && i.turno !== turno) return false;
@@ -1421,8 +1469,14 @@ function renderTeamPanel(){
     const isResolved = !!state.resolved;
     const resolvedDate = state.resolvedDate || "";
     const teamComment = state.comentario || "";
+    const revisor = state.revisor || "";
     const canCheck = !!resolvedDate;
-    const desc = SUBCRITERION_DESCRIPTIONS[i.criterioNombre] || "";
+
+    // Días que tardó en resolverse: diferencia entre la fecha de la
+    // caminata (cuando se detectó) y la fecha de resolución capturada.
+    const dias = computeDiasResolucion(i.fecha, resolvedDate);
+    const diasHtml = dias === null ? "" :
+      `<span class="pill" style="background:${dias > 14 ? "var(--red)" : "var(--green)"};min-width:auto;">${dias} día${dias!==1?"s":""} en resolverse</span>`;
 
     const card = document.createElement("div");
     card.className = "incident-card" + (isResolved ? " resolved" : "");
@@ -1432,12 +1486,9 @@ function renderTeamPanel(){
         <span>📋 <strong>Mes:</strong> ${escapeHtml(i.mes || "Sin mes")}</span>
         <span>🕐 <strong>Turno:</strong> ${escapeHtml(i.turno || "Sin turno")}</span>
         <span>💼 <strong>Área/Rol:</strong> ${escapeHtml(i.area || "Sin área")}</span>
-        <span>👤 <strong>Embajador:</strong> ${escapeHtml(i.embajador || "Sin dato")}</span>
       </div>
-      <p class="incident-title">${escapeHtml(i.criterioCategoria)} · ${escapeHtml(i.criterioNombre)}</p>
-      ${desc ? `<p class="incident-desc">Estándar esperado: ${escapeHtml(desc)}</p>` : ""}
-      ${i.criterioRespuesta ? `<div class="incident-comment">📝 <strong>Respuesta registrada:</strong> ${escapeHtml(i.criterioRespuesta)}</div>` : ""}
-      ${i.comentarios ? `<div class="incident-comment">💬 <strong>Comentario de la caminata:</strong> ${escapeHtml(i.comentarios)}</div>` : ""}
+      <p class="incident-title">🏷️ ${escapeHtml(i.tipo)}</p>
+      <div class="incident-comment">💬 <strong>Comentario del colaborador:</strong> ${escapeHtml(i.comentarios)}</div>
       <label style="font-weight:400;color:var(--gray);font-size:12px;display:block;margin-bottom:6px;">Comentario del equipo (acción tomada, pendientes, etc.)</label>
       <textarea class="incident-comment-field" placeholder="Escribe aquí el seguimiento de ${escapeHtml(team)}..."
         onchange="setTeamComment('${i.id}', this.value)">${escapeHtml(teamComment)}</textarea>
@@ -1451,6 +1502,13 @@ function renderTeamPanel(){
           <label style="font-weight:400;color:var(--gray);">Fecha de resolución:</label>
           <input type="date" value="${resolvedDate}" onchange="setTeamResolvedDate('${i.id}', this.value)" />
         </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label style="font-weight:400;color:var(--gray);">¿Quién revisó?</label>
+          <input type="text" placeholder="Nombre de quién dio seguimiento" value="${escapeHtml(revisor)}"
+            style="border:1px solid #cfd8dd;border-radius:10px;padding:7px 10px;font-size:13px;min-width:180px;"
+            onchange="setTeamRevisor('${i.id}', this.value)" />
+        </div>
+        ${diasHtml}
       </div>
       <div class="incident-sync-note" id="sync_${i.id}"></div>
     `;
@@ -1486,6 +1544,19 @@ function renderTeamSummary(incidents){
   `;
 }
 
+// Calcula cuántos días tardó en resolverse una incidencia, comparando la
+// fecha en que se detectó (fechaIncidenciaISO, viene del backend) contra la
+// fecha de resolución que capturó el equipo (resolvedDate, "YYYY-MM-DD").
+// Devuelve null si falta algún dato o si las fechas no son válidas.
+function computeDiasResolucion(fechaIncidenciaISO, resolvedDate){
+  if(!resolvedDate || !fechaIncidenciaISO) return null;
+  const fechaIncidencia = new Date(fechaIncidenciaISO);
+  const fechaResuelta = new Date(resolvedDate + "T00:00:00");
+  if(isNaN(fechaIncidencia.getTime()) || isNaN(fechaResuelta.getTime())) return null;
+  const dias = Math.round((fechaResuelta - fechaIncidencia) / (1000*60*60*24));
+  return dias >= 0 ? dias : null;
+}
+
 function toggleTeamResolved(id, checked){
   if(!teamStates[id]) teamStates[id] = {};
   teamStates[id].resolved = checked;
@@ -1510,6 +1581,13 @@ function setTeamComment(id, value){
   persistIncidentState(id);
 }
 
+function setTeamRevisor(id, value){
+  if(!teamStates[id]) teamStates[id] = {};
+  teamStates[id].revisor = value;
+  saveTeamStates();
+  persistIncidentState(id);
+}
+
 // Envía el estado actual de una incidencia (comentario, fecha, resuelto) al
 // Apps Script para que quede guardado en la hoja "Seguimiento Ambiente Fisico"
 // y no se pierda al actualizar la página.
@@ -1525,10 +1603,12 @@ async function persistIncidentState(id){
     mes: incident.mes || "",
     turno: incident.turno || "",
     area: incident.area || "",
-    categoria: incident.criterioCategoria || "",
-    criterio: incident.criterioNombre || "",
+    categoria: incident.tipo || "",
+    criterio: "",
     comentario: state.comentario || "",
+    revisor: state.revisor || "",
     fecha: state.resolvedDate || "",
+    diasResolucion: computeDiasResolucion(incident.fecha, state.resolvedDate) ?? "",
     resuelto: !!state.resolved
   };
 
@@ -1556,7 +1636,8 @@ function mergeSeguimientoIntoTeamStates(seguimiento){
     teamStates[item.id] = {
       resolved: !!item.resuelto,
       resolvedDate: item.fechaResolucion || "",
-      comentario: item.comentario || ""
+      comentario: item.comentario || "",
+      revisor: item.revisor || ""
     };
   });
   saveTeamStates();
