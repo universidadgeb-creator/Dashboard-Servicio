@@ -1132,6 +1132,27 @@
       console.warn(`[gviz] No se encontró encabezado para "${fieldName}", usando índice de respaldo ${fallbackIdx}. Encabezados detectados:`, cols);
       return fallbackIdx;
     }
+    // [NUEVO 2026-07-21] Igual que find(), pero devuelve TODAS las columnas que
+    // coinciden en vez de solo la primera. El Google Form real fue editado
+    // reemplazando la pregunta de Rol/Turno/Nombre del colaborador por una
+    // nueva con etiqueta parecida: la columna vieja queda vacía para las
+    // respuestas nuevas y la columna nueva queda vacía para las respuestas
+    // viejas. find() (solo la primera coincidencia) se quedaba pegado a la
+    // columna vieja y esos campos llegaban vacíos para todas las respuestas
+    // posteriores al cambio del Form (se veía como "julio sin ningún avance").
+    // getFirst() en parseGvizTable prueba cada columna candidata fila por fila
+    // y usa la primera que tenga dato, sin importar en cuál haya quedado.
+    function findAll(matcher, fallbackIdx, fieldName) {
+      const found = [];
+      for (let i = 0; i < cols.length; i++) {
+        if (matcher(cols[i])) found.push(i);
+      }
+      if (!found.length) {
+        console.warn(`[gviz] No se encontró encabezado para "${fieldName}", usando índice de respaldo ${fallbackIdx}. Encabezados detectados:`, cols);
+        return [fallbackIdx];
+      }
+      return found;
+    }
     const eq  = (txt) => (label) => label === txt;
     const has = (txt) => (label) => label.indexOf(txt) >= 0;
 
@@ -1141,9 +1162,9 @@
       emb1:      find((l) => has("SELECCIONA TU NOMBRE")(l) && !/[23]/.test(l), 3, "Embajador (bloque 1)"),
       emb2:      find((l) => has("SELECCIONA TU NOMBRE")(l) && l.indexOf("2") >= 0, 4, "Embajador (bloque 2)"),
       emb3:      find((l) => has("SELECCIONA TU NOMBRE")(l) && l.indexOf("3") >= 0, 5, "Embajador (bloque 3)"),
-      colaborador: find(has("NOMBRE DEL EVALUADO"), 6, "Colaborador evaluado"),
-      rol:       find(has("ROL A EVALU"), 7, "Rol"),
-      turno:     find(has("TURNO"), 8, "Turno"),
+      colaboradorCols: findAll(has("NOMBRE DEL EVALUADO"), 6, "Colaborador evaluado"),
+      rolCols:         findAll(has("ROL"), 7, "Rol"),
+      turnoCols:       findAll(has("TURNO"), 8, "Turno"),
       H:         find(has("HIGIENE DE MANOS"), 9, "Higiene de manos"),
       P:         find(eq("PEINADO"), 10, "Peinado"),
       A:         find(eq("ACCESORIOS"), 11, "Accesorios"),
@@ -1178,6 +1199,17 @@
         if (!cell || cell.v === null || cell.v === undefined) return "";
         return String(cell.v).trim();
       };
+      // [NUEVO 2026-07-21] Prueba cada columna candidata (ver findAll más arriba)
+      // en orden y devuelve la primera que tenga dato en ESTA fila. Necesario
+      // porque, tras el cambio del Form, cada fila solo tiene dato en UNA de
+      // las dos columnas candidatas (la vieja o la nueva), nunca en ambas.
+      const getFirst = (idxArr) => {
+        for (const i of idxArr) {
+          const v = get(i);
+          if (v) return v;
+        }
+        return "";
+      };
       const getDate = (i) => {
         const cell = row.c && row.c[i];
         if (!cell || cell.v === null) return null;
@@ -1196,9 +1228,9 @@
 
       const emb1 = get(idx.emb1), emb2 = get(idx.emb2), emb3 = get(idx.emb3);
       const embajador  = cleanText(emb1 || emb2 || emb3);
-      const colaborador= cleanText(get(idx.colaborador));
-      const rol        = cleanText(get(idx.rol));
-      const turno      = normalizeShift(get(idx.turno));
+      const colaborador= cleanText(getFirst(idx.colaboradorCols));
+      const rol        = cleanText(getFirst(idx.rolCols));
+      const turno      = normalizeShift(getFirst(idx.turnoCols));
       const mes        = normalizeMonth(get(idx.mes));
       if (!mes) { droppedNoMes++; continue; }
 
