@@ -833,6 +833,7 @@ const SUBCRITERION_DESCRIPTIONS = {
 let records = [];
 let payload = null;
 let monthlyChart = null;
+let caminatasResumen = [];
 
 const labelPlugin = {
   id: "labelPlugin",
@@ -882,6 +883,7 @@ async function loadData(){
     if(!payload || payload.ok === false) throw new Error(payload?.error || "Respuesta inválida de Apps Script");
 
     records = Array.isArray(payload.records) ? payload.records : [];
+    caminatasResumen = Array.isArray(payload.caminatasResumen) ? payload.caminatasResumen : [];
 
     mergeSeguimientoIntoTeamStates(Array.isArray(payload.seguimiento) ? payload.seguimiento : []);
 
@@ -936,7 +938,7 @@ function render(){
 
   renderClubs(data);
   renderGeneral(agg, data.length);
-  renderMonthly(data);
+  renderMonthly();
   renderCriteria(agg.categories);
   renderGoals(agg.goals);
 }
@@ -1097,7 +1099,12 @@ function renderClubs(data){
   });
 }
 
-function renderMonthly(data){
+// [CORREGIDO] Antes esta gráfica promediaba el % de criterios aprobados en
+// las respuestas del formulario (una métrica de calidad de la caminata),
+// que es distinto al % real de caminatas realizadas vs. meta. Ahora toma el
+// "Cumplimiento" (Real/Meta) ya calculado en la hoja "Caminatas Realizadas",
+// para que coincida con el número real de tu Google Sheets.
+function renderMonthly(){
   // Mostrar solo de Abril a Diciembre
   const labels = [
     "Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
@@ -1105,10 +1112,8 @@ function renderMonthly(data){
 
   const datasets = CLUBS.map(club=>{
     const values = labels.map(month=>{
-      const rows = data.filter(r=>r.club === club && r.mes === month);
-      let ok=0, ev=0;
-      rows.forEach(r=>{ok += Number(r.totalCumplidos||0); ev += Number(r.totalEvaluados||0);});
-      return ev>0 ? pct(ok,ev) : 0;
+      const entry = caminatasResumen.find(r => r.club === club && r.mes === month);
+      return entry ? entry.cumplimiento : null;
     });
 
     return {
