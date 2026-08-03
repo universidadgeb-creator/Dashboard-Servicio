@@ -671,7 +671,7 @@
       <div class="section-head">
         <div>
           <h2>Caminatas por club</h2>
-          <p class="note">Tarjetas tipo dona con caminatas realizadas y cumplimiento promedio por sucursal.</p>
+          <p class="note">Caminatas realizadas y % de cumplimiento real (Real/Meta) por sucursal, según la hoja "Caminatas Realizadas".</p>
         </div>
       </div>
       <div id="clubs" class="club-cards"></div>
@@ -834,6 +834,12 @@ let records = [];
 let payload = null;
 let monthlyChart = null;
 let caminatasResumen = [];
+
+// Meses que cubre la temporada de caminatas (usado por la gráfica mensual y
+// por las tarjetas de "Caminatas por club").
+const MESES_CAMINATAS = [
+  "Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+];
 
 const labelPlugin = {
   id: "labelPlugin",
@@ -1064,19 +1070,31 @@ function renderGeneral(agg,count){
   document.getElementById("lowestScore").textContent = agg.lowest ? `${fmt(agg.lowest.percentage)} · ${agg.lowest.category}` : "Sin datos";
 }
 
-function renderClubs(data){
+// [CORREGIDO] Igual que la gráfica mensual: antes esta tarjeta mostraba el
+// número de auditorías capturadas y el % promedio de criterios aprobados,
+// que no es lo mismo que el cumplimiento real de caminatas (Real/Meta). Ahora
+// usa el mismo "caminatasResumen" que viene de la hoja "Caminatas Realizadas",
+// respetando el filtro de Mes (si "Vista" está en "Mensual") y el de Club.
+function renderClubs(){
   const wrap = document.getElementById("clubs");
   wrap.innerHTML = "";
 
+  const vista = document.getElementById("vista").value;
+  const mesFiltro = document.getElementById("mes").value;
+  const clubFiltro = document.getElementById("club").value;
+  const meses = (vista === "mensual" && mesFiltro) ? [mesFiltro] : MESES_CAMINATAS;
+
   CLUBS.forEach(club=>{
-    const rows = data.filter(r=>r.club === club);
-    let ok=0, ev=0;
-    rows.forEach(r=>{
-      ok += Number(r.totalCumplidos || 0);
-      ev += Number(r.totalEvaluados || 0);
+    const sinDatos = clubFiltro && clubFiltro !== club;
+    const entries = sinDatos ? [] : caminatasResumen.filter(r => r.club === club && meses.includes(r.mes));
+
+    let real = 0, meta = 0;
+    entries.forEach(e=>{
+      real += Number(e.real || 0);
+      meta += Number(e.meta || 0);
     });
 
-    const p = pct(ok,ev);
+    const p = pct(real, meta);
     const safe = p === null ? 0 : p;
     const color = CLUB_COLORS[club];
 
@@ -1085,14 +1103,14 @@ function renderClubs(data){
     div.innerHTML = `
       <div class="donut" style="--value:${safe};--color:${color}">
         <div class="inside">
-          <strong>${rows.length}</strong>
+          <strong>${real}</strong>
           <span>caminatas</span>
         </div>
       </div>
       <div>
         <h3>${escapeHtml(club)}</h3>
-        <p><strong>${fmt(p)}</strong> de cumplimiento promedio.</p>
-        <p>${rows.length ? "Información filtrada automáticamente." : "Sin registros con los filtros actuales."}</p>
+        <p><strong>${fmt(p)}</strong> de cumplimiento real (Real/Meta).</p>
+        <p>${entries.length ? "Información filtrada automáticamente." : "Sin registros con los filtros actuales."}</p>
       </div>
     `;
     wrap.appendChild(div);
