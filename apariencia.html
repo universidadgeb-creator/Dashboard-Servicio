@@ -792,6 +792,15 @@
   // (4) motivos de falla de Gafete.
   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby8e1vk137rCOGYpaSkX1jBrcrlktfhlAeq8t2CQHCeARKd014keHngDtt62cW-hRVsgQ/exec";
 
+  // [FIX] Antes loadData() leía directamente el endpoint público (gviz) de
+  // Google Sheets, sin autenticación. Ese endpoint anónimo puede quedarse
+  // "atorado" sirviendo una copia vieja/recortada del Sheet cuando crece
+  // mucho (se vieron solo 37 de 593+ filas reales). Ahora los datos se piden
+  // a través de este mismo Apps Script (acceso autenticado y completo), que
+  // entrega la hoja "Respuestas de formulario 1" ya empaquetada con la misma
+  // forma que gviz (cols/rows), para no tener que tocar parseGvizTable().
+  const FORM_RESPONSES_ACTION = "formResponses";
+
   const MONTHS  = ["Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   const CLUBS   = ["Naciones Unidas","Gourmetería","Valle Real"];
   const CRITERIA = [
@@ -960,55 +969,42 @@
     fillSelect("avanceClub",      ["Todos",...CLUBS],  "Todos");
   }
 
-  // ─── CARGA JSONP ─────────────────────────────────────────────────────────────
-  function loadData() {
+  // ─── CARGA DE DATOS ──────────────────────────────────────────────────────────
+  // [FIX] Antes esta función armaba su propio JSONP directo a
+  // docs.google.com/.../gviz (acceso público/anónimo). Ahora reutiliza
+  // callAppsScript() para pedir la misma información, pero autenticada, a
+  // través del Web App de Codigo.gs — evita el límite/recorte del endpoint
+  // público. El resto del parseo (parseGvizTable) no cambia porque el
+  // backend entrega la tabla en la misma forma {cols, rows} que gviz.
+  async function loadData() {
     setLoading(true);
     showToast("Cargando datos...");
-    const cbName = "_gvizCb_" + Date.now();
-    let timer = null;
-    function cleanup() {
-      clearTimeout(timer);
-      const s = document.getElementById(cbName);
-      if (s) s.remove();
-      try { delete window[cbName]; } catch(e) {}
+    try {
+      const result = await callAppsScript(FORM_RESPONSES_ACTION);
+      if (!result || !result.table) {
+        throw new Error("Sin datos");
+      }
+      const table = result.table;
+      console.log("[formResponses] Tabla recibida:", table);
+      if (!table.rows) throw new Error("Sin datos");
+      respuestas = parseGvizTable(table);
+      if (pendingResoluciones) mergeResolucionesPersistidas_(pendingResoluciones);
+      populateFilters();
+      renderAll();
+      renderAvance();
+      if (respuestas.length === 0 && table.rows.length > 0) {
+        // [NUEVO] Conexión OK pero el parseo descartó todo: probablemente
+        // cambiaron los encabezados del Form. Ver detalle en consola.
+        showToast(`⚠️ Se conectó al Sheet (${table.rows.length} filas) pero 0 pasaron el filtro. Revisa la consola (F12) para ver el detalle de columnas.`);
+      } else {
+        showToast("✓ " + respuestas.length + " registros cargados.");
+      }
+    } catch (err) {
+      console.error("[formResponses] Error procesando datos:", err);
+      showToast("Error al procesar datos: " + err.message + " Verifica APPS_SCRIPT_URL y que el Web App esté implementado con la última versión.");
+    } finally {
+      setLoading(false);
     }
-    window[cbName] = function(data) {
-      cleanup();
-      try {
-        console.log("[gviz] Respuesta cruda recibida:", data);
-        const table = data.table;
-        if (!table || !table.rows) throw new Error("Sin datos");
-        respuestas = parseGvizTable(table);
-        if (pendingResoluciones) mergeResolucionesPersistidas_(pendingResoluciones);
-        populateFilters();
-        renderAll();
-        renderAvance();
-        if (respuestas.length === 0 && table.rows.length > 0) {
-          // [NUEVO] Conexión OK pero el parseo descartó todo: probablemente
-          // cambiaron los encabezados del Form. Ver detalle en consola.
-          showToast(`⚠️ Se conectó al Sheet (${table.rows.length} filas) pero 0 pasaron el filtro. Revisa la consola (F12) para ver el detalle de columnas.`);
-        } else {
-          showToast("✓ " + respuestas.length + " registros cargados.");
-        }
-      } catch(err) {
-        console.error("[gviz] Error procesando datos:", err);
-        showToast("Error al procesar datos: " + err.message);
-      } finally { setLoading(false); }
-    };
-    timer = setTimeout(() => {
-      cleanup(); setLoading(false);
-      console.error("[gviz] Timeout esperando respuesta de Google Sheets. SHEET_ID:", SHEET_ID, "GID_FORM:", GID_FORM);
-      showToast("Tiempo agotado. Verifica que el Sheet sea público.");
-    }, JSONP_TIMEOUT);
-    const script = document.createElement("script");
-    script.id = cbName;
-    script.onerror = () => {
-      cleanup(); setLoading(false);
-      console.error("[gviz] No se pudo cargar el script JSONP de Google Sheets. Verifica que el Sheet esté compartido como \"Cualquier usuario con el enlace puede ver\" y que SHEET_ID/GID_FORM sean correctos.", SHEET_ID, GID_FORM);
-      showToast("No se pudo conectar. Verifica permisos del Sheet.");
-    };
-    script.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${cbName}&gid=${GID_FORM}&t=${Date.now()}`;
-    document.body.appendChild(script);
   }
 
   /* ============================================================================
@@ -1901,11 +1897,24 @@
     renderComments();
   }
 
-  // [NUEVO] (3) Escribe fecha de resolución + tipo directamente en la hoja de
-  // origen (Excel) a través del backend, para que no se pierda al recargar.
+  // [MODIFICADO] Escribe fecha de resolución + tipo en la hoja de seguimiento
+  // dedicada ("Seguimiento de Incidencias", separada de las respuestas del
+  // Form) a través del backend, para que no se pierda al recargar. Se manda
+  // también club/colaborador/comentario/timestamp de contexto, tomados de
+  // `respuestas`, solo para que la hoja de seguimiento sea legible — la
+  // llave real sigue siendo gvizRowIndex.
   async function persistirResolucion_(gvizRowIndex, fecha, tipo) {
     if (gvizRowIndex === undefined || gvizRowIndex === null || gvizRowIndex === "undefined") return;
-    const result = await callAppsScript("saveResolution", { row: gvizRowIndex, fecha: fecha || "", tipo: tipo || "" });
+    const item = respuestas.find(r => String(r.gvizRowIndex) === String(gvizRowIndex));
+    const result = await callAppsScript("saveResolution", {
+      row: gvizRowIndex,
+      fecha: fecha || "",
+      tipo: tipo || "",
+      club: item ? item.club : "",
+      colaborador: item ? item.colaborador : "",
+      comentario: item ? item.comentarios : "",
+      timestamp: item && item.fecha ? String(item.fecha) : ""
+    });
     if (!result) {
       showToast("No se pudo guardar en el Excel (revisa la URL del backend). Se guardó localmente.");
     }
