@@ -1086,24 +1086,25 @@
   // dashboard reclasifique automáticamente lo ya resuelto sin depender solo
   // de localStorage.
   function mergeResolucionesPersistidas_(resolucionesBackend) {
-    if (!respuestas.length || !resolucionesBackend.length) return;
+    if (!respuestas.length) return;
+    // [FIX] Antes, si resolucionesBackend venía vacío (0 filas resueltas de
+    // verdad en el Excel), la función se salía sin hacer nada — dejando
+    // "pegados" para siempre en localStorage estados de "resuelto" viejos
+    // (p.ej. de pruebas anteriores o de un bug ya corregido). Ahora el
+    // backend manda SIEMPRE la última palabra: se recorren TODAS las
+    // respuestas y se sobreescribe su estado local según lo que diga (o no
+    // diga) el Excel, así una fila sin resolución real siempre queda
+    // desmarcada, sin importar lo que haya quedado guardado antes.
     const byRowIndex = {};
-    respuestas.forEach(r => { byRowIndex[r.gvizRowIndex] = r; });
+    (resolucionesBackend || []).forEach(res => { byRowIndex[res.gvizRowIndex] = res; });
 
-    resolucionesBackend.forEach(res => {
-      const r = byRowIndex[res.gvizRowIndex];
-      if (!r) return;
-      // [FIX 2026-07-07] El Excel es la fuente de verdad: antes, si el valor
-      // local (localStorage) ya tenía algo, se prefería sobre el del Excel
-      // aunque este último se hubiera borrado o corregido manualmente, dejando
-      // "pegado" para siempre un valor viejo (p.ej. un número escrito por
-      // error en la columna de tipo). Ahora el valor del Excel manda siempre
-      // que exista una resolución registrada para esa fila.
+    respuestas.forEach(r => {
+      const res = byRowIndex[r.gvizRowIndex];
       comentStates[r.commentId] = {
-        resolved: !!res.fecha,
-        resolvedDate: res.fecha || "",
-        tipo: res.tipo || "",
-        nota: res.nota || ""
+        resolved: !!(res && res.fecha),
+        resolvedDate: (res && res.fecha) || "",
+        tipo: (res && res.tipo) || "",
+        nota: (res && res.nota) || ""
       };
     });
     saveCommentStates();
