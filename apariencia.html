@@ -1102,7 +1102,8 @@
       comentStates[r.commentId] = {
         resolved: !!res.fecha,
         resolvedDate: res.fecha || "",
-        tipo: res.tipo || ""
+        tipo: res.tipo || "",
+        nota: res.nota || ""
       };
     });
     saveCommentStates();
@@ -1746,6 +1747,8 @@
       // Google Sheet (columna R), pero sigue siendo editable desde el select.
       const tipoEfectivo = state.tipo || r.tipoReporteSheet || "";
       const { select: tipoSelect, custom: tipoCustom } = matchTipoIncidencia_(tipoEfectivo);
+      // [NUEVO] Nota libre que escribe Capital Humano sobre cómo se atendió.
+      const notaCH      = state.nota || "";
       // [MODIFICADO] (3) el checkbox solo puede habilitarse si ya hay fecha
       const canCheck    = !!resolvedDate;
 
@@ -1804,6 +1807,13 @@
                   border:1px solid #d9e3ea;border-radius:8px;padding:6px 8px;font-size:13px;"
                 onchange="setTipoIncidenciaOtro('${r.commentId}', '${r.gvizRowIndex}', this.value)" />
             </div>
+            <div style="display:flex;align-items:flex-start;gap:8px;flex:1 1 260px;min-width:220px;">
+              <label style="font-weight:400;color:#5a7080;white-space:nowrap;padding-top:6px;">Nota CH:</label>
+              <textarea rows="1" placeholder="Comentario sobre cómo se atendió..."
+                style="flex:1;border:1px solid #d9e3ea;border-radius:8px;padding:6px 8px;
+                  font-size:13px;font-family:inherit;resize:vertical;"
+                onchange="setNotaCH('${r.commentId}', '${r.gvizRowIndex}', this.value)">${escapeHtml(notaCH)}</textarea>
+            </div>
             ${daysHtml}
             <button type="button" class="hide-comment-btn" onclick="hideComment('${r.commentId}')"
               style="margin-left:auto;background:none;border:1px solid #c5d4de;border-radius:6px;
@@ -1861,12 +1871,19 @@
 
   // [MODIFICADO] (3) Al capturar la fecha: habilita el checkbox y persiste en
   // Excel (columna nueva en la hoja de origen) vía el backend.
+  // [FIX] Antes, si CH solo ponía la fecha y nunca tocaba el select de
+  // "Tipo" (que ya mostraba por defecto la clasificación de la columna R),
+  // ese tipo nunca se mandaba a guardar porque el onchange del select no se
+  // disparaba. Ahora se usa como respaldo el tipo por defecto (tipoReporteSheet)
+  // si CH no eligió uno manualmente.
   async function setResolvedDate(id, gvizRowIndex, date) {
     if (!comentStates[id]) comentStates[id] = {};
     comentStates[id].resolvedDate = date;
     if (!date) comentStates[id].resolved = false; // sin fecha no puede quedar "atendido"
     await saveCommentStates();
-    await persistirResolucion_(gvizRowIndex, date, comentStates[id].tipo || "");
+    const item = respuestas.find(r => r.commentId === id);
+    const tipoEfectivo = comentStates[id].tipo || (item && item.tipoReporteSheet) || "";
+    await persistirResolucion_(gvizRowIndex, date, tipoEfectivo, comentStates[id].nota || "");
     renderComments();
   }
 
@@ -1882,7 +1899,7 @@
     }
     comentStates[id].tipo = tipo;
     await saveCommentStates();
-    await persistirResolucion_(gvizRowIndex, comentStates[id].resolvedDate || "", tipo);
+    await persistirResolucion_(gvizRowIndex, comentStates[id].resolvedDate || "", tipo, comentStates[id].nota || "");
     renderComments();
   }
 
@@ -1893,7 +1910,16 @@
     const tipo = cleanText(texto);
     comentStates[id].tipo = tipo || "Otro";
     await saveCommentStates();
-    await persistirResolucion_(gvizRowIndex, comentStates[id].resolvedDate || "", comentStates[id].tipo);
+    await persistirResolucion_(gvizRowIndex, comentStates[id].resolvedDate || "", comentStates[id].tipo, comentStates[id].nota || "");
+    renderComments();
+  }
+
+  // [NUEVO] Nota libre de Capital Humano sobre cómo se atendió la incidencia.
+  async function setNotaCH(id, gvizRowIndex, texto) {
+    if (!comentStates[id]) comentStates[id] = {};
+    comentStates[id].nota = cleanText(texto);
+    await saveCommentStates();
+    await persistirResolucion_(gvizRowIndex, comentStates[id].resolvedDate || "", comentStates[id].tipo || "", comentStates[id].nota);
     renderComments();
   }
 
@@ -1903,13 +1929,14 @@
   // también club/colaborador/comentario/timestamp de contexto, tomados de
   // `respuestas`, solo para que la hoja de seguimiento sea legible — la
   // llave real sigue siendo gvizRowIndex.
-  async function persistirResolucion_(gvizRowIndex, fecha, tipo) {
+  async function persistirResolucion_(gvizRowIndex, fecha, tipo, nota) {
     if (gvizRowIndex === undefined || gvizRowIndex === null || gvizRowIndex === "undefined") return;
     const item = respuestas.find(r => String(r.gvizRowIndex) === String(gvizRowIndex));
     const result = await callAppsScript("saveResolution", {
       row: gvizRowIndex,
       fecha: fecha || "",
       tipo: tipo || "",
+      nota: nota || "",
       club: item ? item.club : "",
       colaborador: item ? item.colaborador : "",
       comentario: item ? item.comentarios : "",
