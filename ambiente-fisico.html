@@ -452,23 +452,57 @@
     .team-unlock-grid{
       display:grid;
       grid-template-columns:minmax(220px,380px) auto;
-      gap:12px;
+      gap:14px;
       align-items:end;
+      background:linear-gradient(180deg,#fcfeff 0%, var(--brand-soft) 220%);
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:20px 22px;
+    }
+
+    .team-unlock-grid input[type="password"]{
+      width:100%;
+      border:1px solid #cfd8dd;
+      border-radius:13px;
+      min-height:48px;
+      padding:11px 14px;
+      background:white;
+      color:#111827;
+      font-size:14px;
+      outline:none;
+      transition:border .15s ease, box-shadow .15s ease;
+    }
+
+    .team-unlock-grid input[type="password"]:focus{
+      border-color:var(--brand);
+      box-shadow:0 0 0 3px rgba(0,120,130,.14);
     }
 
     .team-unlock-grid button{
       border:0;
       border-radius:13px;
-      min-height:46px;
+      min-height:48px;
       padding:12px 18px;
-      background:var(--brand);
+      background:linear-gradient(135deg, var(--brand), var(--brand-dark));
       color:white;
       font-weight:900;
-      font-size:14px;
+      font-size:15px;
+      letter-spacing:.02em;
       cursor:pointer;
+      box-shadow:0 10px 22px rgba(0,120,130,.22);
+      transition:transform .12s ease, box-shadow .12s ease, opacity .12s ease;
     }
 
-    .team-unlock-grid button:hover{opacity:.92}
+    .team-unlock-grid button:hover{
+      opacity:.96;
+      transform:translateY(-1px);
+      box-shadow:0 12px 26px rgba(0,120,130,.3);
+    }
+
+    .team-unlock-grid button:active{
+      transform:translateY(0);
+      box-shadow:0 6px 14px rgba(0,120,130,.22);
+    }
 
     .hidden{display:none !important}
 
@@ -737,14 +771,14 @@
     <section class="section team-section">
       <div class="section-head">
         <div>
-          <h2>Mantenimiento y Limpieza | Incidencias por equipo</h2>
+          <h2>Incidencias por equipo</h2>
           <p class="note">Acceso interno — cada equipo revisa y da seguimiento únicamente a sus propias incidencias detectadas en las caminatas.</p>
         </div>
       </div>
 
       <div id="teamUnlockBox" class="team-unlock-grid">
         <div>
-          <label>Contraseña</label>
+          <label>🔒 Contraseña</label>
           <input id="teamPassword" type="password" placeholder="Ingresa la contraseña" />
         </div>
         <button id="teamUnlockBtn" type="button">Entrar</button>
@@ -807,7 +841,7 @@ const CATEGORY_DESCRIPTIONS = {
   "Mantenimiento": "Revisa condiciones funcionales y ambientales del espacio, como paredes, iluminación, temperatura, música, aromatizante y estado del equipo.",
   "5's": "Evalúa el orden y la organización del área para asegurar que solo estén los materiales necesarios y que todo esté en su lugar.",
   "Limpieza en Vestidores": "Evalúa limpieza, abasto y condiciones de los elementos dentro de baños y vestidores.",
-  "Limpieza General": "Evalúa limpieza visible en elementos generales del área, como espejos y botes de basura."
+  "Limpieza General": "Evalúa condiciones de limpieza generales del área, como el área desinfectante."
 };
 
 const SUBCRITERION_DESCRIPTIONS = {
@@ -819,13 +853,15 @@ const SUBCRITERION_DESCRIPTIONS = {
   "Estado del equipo": "Todo el equipo está en perfecto estado, sin daños visibles y funcionando correctamente.",
   "Orden del área": "Se encuentran solo los materiales necesarios para las actividades y no hay elementos fuera de lugar.",
   "Organización de artículos": "Los materiales están organizados, etiquetados y almacenados en su lugar correspondiente.",
-  "Jaboneras": "La jabonera está limpia, con buen nivel de jabón y funcionando correctamente.",
+  "Jaboneras (Lavamanos)": "La jabonera del lavamanos está limpia, con buen nivel de jabón y funcionando correctamente.",
+  "Jaboneras (Regaderas)": "La jabonera de las regaderas está limpia, con buen nivel de jabón y funcionando correctamente.",
   "Espejos": "Los espejos están totalmente limpios, sin manchas, huellas o gotas visibles.",
   "Regaderas": "Las regaderas están limpias, sin residuos visibles y en buen estado.",
   "Llaves del lavamanos": "Las llaves del lavamanos están limpias, sin sarro ni marcas de agua visibles.",
   "Baños WC": "El baño está limpio interior y exteriormente, sin manchas, sarro, residuos o malos olores.",
   "Botes de basura": "Los botes están por debajo del 80% de su capacidad, con bolsa bien colocada y sin residuos fuera.",
   "Papel baños / vestidores": "Los dispensadores cuentan con papel suficiente y funcionando correctamente.",
+  "Área desinfectante": "El área desinfectante está abastecida y en condiciones adecuadas para su uso.",
   "Limpieza del área": "El área se encuentra limpia y en condiciones adecuadas para la operación."
 };
 
@@ -942,7 +978,7 @@ function render(){
   const data = filteredRecords();
   const agg = aggregate(data);
 
-  renderClubs(data);
+  renderClubs();
   renderGeneral(agg, data.length);
   renderMonthly();
   renderCriteria(agg.categories);
