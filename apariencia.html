@@ -1762,8 +1762,11 @@
       }
 
       // Days elapsed
+      // [FIX] Antes exigía que además de poner la fecha, se marcara aparte la
+      // casilla "Atendido por CH" para que se calculara el tiempo de
+      // resolución. Ahora basta con capturar la fecha.
       let daysHtml = "";
-      if (isResolved && resolvedDate && r.fecha instanceof Date && !isNaN(r.fecha)) {
+      if (resolvedDate && r.fecha instanceof Date && !isNaN(r.fecha)) {
         const rd = new Date(resolvedDate + "T00:00:00");
         const diff = Math.round((rd - r.fecha) / (1000*60*60*24));
         const cls = diff > 14 ? "overdue" : "";
@@ -1880,7 +1883,11 @@
   async function setResolvedDate(id, gvizRowIndex, date) {
     if (!comentStates[id]) comentStates[id] = {};
     comentStates[id].resolvedDate = date;
-    if (!date) comentStates[id].resolved = false; // sin fecha no puede quedar "atendido"
+    // [FIX] Antes, poner la fecha no marcaba "resolved" — había que además
+    // tocar la casilla "Atendido por CH" aparte. Como el backend ya
+    // considera atendido en cuanto hay fecha (ver mergeResolucionesPersistidas_),
+    // aquí se refleja lo mismo de inmediato para no depender de un segundo paso.
+    comentStates[id].resolved = !!date;
     await saveCommentStates();
     const item = respuestas.find(r => r.commentId === id);
     const tipoEfectivo = comentStates[id].tipo || (item && item.tipoReporteSheet) || "";
