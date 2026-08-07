@@ -1765,12 +1765,24 @@
       // [FIX] Antes exigía que además de poner la fecha, se marcara aparte la
       // casilla "Atendido por CH" para que se calculara el tiempo de
       // resolución. Ahora basta con capturar la fecha.
+      // [NUEVO] Si la fecha de resolución queda ANTES del registro (típico
+      // error de captura, p.ej. un año mal tecleado), se avisa en vez de
+      // mostrar un número de días negativo sin sentido.
       let daysHtml = "";
-      if (resolvedDate && r.fecha instanceof Date && !isNaN(r.fecha)) {
-        const rd = new Date(resolvedDate + "T00:00:00");
-        const diff = Math.round((rd - r.fecha) / (1000*60*60*24));
-        const cls = diff > 14 ? "overdue" : "";
-        daysHtml = `<span class="days-badge ${cls}">${diff} día${diff!==1?"s":""} de resolución</span>`;
+      let minResolucion = "";
+      if (r.fecha instanceof Date && !isNaN(r.fecha)) {
+        minResolucion = toYMD_(r.fecha);
+
+        if (resolvedDate) {
+          const rd = new Date(resolvedDate + "T00:00:00");
+          const diff = Math.round((rd - r.fecha) / (1000*60*60*24));
+          if (diff < 0) {
+            daysHtml = `<span class="days-badge overdue" title="La fecha de resolución (${resolvedDate}) es anterior a la fecha del registro (${fechaStr}). Revisa el año/fecha capturados.">⚠️ Fecha inválida</span>`;
+          } else {
+            const cls = diff > 14 ? "overdue" : "";
+            daysHtml = `<span class="days-badge ${cls}">${formatDuracion_(diff)} de resolución</span>`;
+          }
+        }
       }
 
       const tipoOptions = ["", ...TIPOS_INCIDENCIA].map(t =>
@@ -1798,6 +1810,7 @@
             <div style="display:flex;align-items:center;gap:8px;">
               <label style="font-weight:400;color:#5a7080;">Fecha resolución:</label>
               <input type="date" value="${resolvedDate}"
+                ${minResolucion ? `min="${minResolucion}"` : ""} max="${toYMD_(new Date())}"
                 onchange="setResolvedDate('${r.commentId}', '${r.gvizRowIndex}', this.value)" />
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
@@ -1842,6 +1855,27 @@
     const pendientes = total - atendidas;
     const pct = total > 0 ? Math.round((atendidas / total) * 100) : 0;
 
+    // [NUEVO] Promedio de días de resolución: solo sobre incidencias
+    // atendidas con fecha de resolución válida (posterior o igual al
+    // registro) — las inválidas (ver "⚠️ Fecha inválida" en cada tarjeta)
+    // se excluyen para no descuadrar el promedio.
+    const diasValidos = base.reduce((acc, r) => {
+      const state = comentStates[r.commentId];
+      if (!state || !state.resolved || !state.resolvedDate) return acc;
+      if (!(r.fecha instanceof Date) || isNaN(r.fecha)) return acc;
+      const rd = new Date(state.resolvedDate + "T00:00:00");
+      const diff = Math.round((rd - r.fecha) / (1000*60*60*24));
+      if (diff < 0) return acc;
+      acc.push(diff);
+      return acc;
+    }, []);
+    const promedioDias = diasValidos.length
+      ? Math.round(diasValidos.reduce((a,b) => a+b, 0) / diasValidos.length)
+      : null;
+    const promedioHtml = promedioDias === null
+      ? "—"
+      : formatDuracion_(promedioDias);
+
     if (!total) {
       el.innerHTML = `<div class="empty" style="margin-bottom:16px;">No hay incidencias para la selección actual.</div>`;
       return;
@@ -1860,6 +1894,11 @@
         <div style="flex:1;min-width:140px;background:#fff;border:1px solid #e0e8ee;border-radius:10px;padding:14px 16px;">
           <div style="font-size:12px;color:#5a7080;font-weight:700;margin-bottom:6px;">Pendientes</div>
           <div style="font-size:24px;font-weight:800;color:#c94032;">${pendientes}</div>
+        </div>
+        <div style="flex:1;min-width:140px;background:#fff;border:1px solid #e0e8ee;border-radius:10px;padding:14px 16px;">
+          <div style="font-size:12px;color:#5a7080;font-weight:700;margin-bottom:6px;">Promedio de resolución</div>
+          <div style="font-size:24px;font-weight:800;color:#007882;">${promedioHtml}</div>
+          ${diasValidos.length ? `<div style="font-size:11px;color:#5a7080;margin-top:2px;">sobre ${diasValidos.length} incidencia${diasValidos.length!==1?'s':''} con fecha válida</div>` : ""}
         </div>
       </div>`;
   }
@@ -2033,6 +2072,35 @@
   }
   function cleanText(v) { return String(v||"").trim().replace(/\s+/g," "); }
   function unique(arr)  { return [...new Set(arr.map(cleanText).filter(Boolean))]; }
+
+  // [NUEVO] Formatea una fecha local (evita desfases de zona horaria del
+  // típico toISOString()) como yyyy-MM-dd, para usarla en atributos
+  // min/max de <input type="date">.
+  function toYMD_(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  // [NUEVO] Convierte una cantidad de días a un texto legible: días si es
+  // poco tiempo, meses si ya pasó más de un mes, años (+ meses) si es más
+  // de un año — para no mostrar cosas como "62 días" cuando son "2 meses".
+  function formatDuracion_(diffDays) {
+    if (diffDays <= 31) {
+      return diffDays + " día" + (diffDays !== 1 ? "s" : "");
+    }
+    if (diffDays < 365) {
+      const months = Math.round(diffDays / 30);
+      return months + " mes" + (months !== 1 ? "es" : "");
+    }
+    const years = Math.floor(diffDays / 365);
+    const remDays = diffDays % 365;
+    const months = Math.round(remDays / 30);
+    let out = years + " año" + (years !== 1 ? "s" : "");
+    if (months > 0) out += " y " + months + " mes" + (months !== 1 ? "es" : "");
+    return out;
+  }
 
   // Detecta el mes actual del sistema y lo mapea al nombre en español usado en el dashboard
   function getCurrentMonthName() {
