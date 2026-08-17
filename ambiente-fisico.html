@@ -772,13 +772,13 @@
       <div class="section-head">
         <div>
           <h2>Incidencias por equipo</h2>
-          <p class="note">Acceso interno �?" cada equipo revisa y da seguimiento únicamente a sus propias incidencias detectadas en las caminatas.</p>
+          <p class="note">Acceso interno — cada equipo revisa y da seguimiento únicamente a sus propias incidencias detectadas en las caminatas.</p>
         </div>
       </div>
 
       <div id="teamUnlockBox" class="team-unlock-grid">
         <div>
-          <label>�Y"' Contraseña</label>
+          <label>🔒 Contraseña</label>
           <input id="teamPassword" type="password" placeholder="Ingresa la contraseña" />
         </div>
         <button id="teamUnlockBtn" type="button">Entrar</button>
@@ -812,7 +812,7 @@
             <label>Estado</label>
             <select id="teamEstado">
               <option value="pendientes">⏳ Pendientes</option>
-              <option value="resueltos">�o. Resueltos</option>
+              <option value="resueltos">✅ Resueltos</option>
               <option value="todos">Todos</option>
             </select>
           </div>
@@ -1255,7 +1255,7 @@ function renderCriteria(categories){
           <span>${escapeHtml(categoryDescription)}</span>
         </div>
         <div class="criterion-pct">${fmt(p)}</div>
-        <div class="chev">�O"</div>
+        <div class="chev">⌄</div>
       </button>
       <div class="subcriteria">
         <ul class="sub-list">${subItems}</ul>
@@ -1347,7 +1347,7 @@ function showError(msg){
 }
 
 /****************************************************
- * PANEL PROTEGIDO �?" MANTENIMIENTO Y LIMPIEZA
+ * PANEL PROTEGIDO — MANTENIMIENTO Y LIMPIEZA
  * Acceso interno por contraseña. Cada equipo revisa
  * únicamente las incidencias (criterios incumplidos)
  * que le corresponden según su categoría.
@@ -1396,7 +1396,7 @@ function parseTiposReporte(rawTipoReporte){
     .map(s => s.trim())
     .filter(Boolean)
     .map(s => {
-      const key = s.toLowerCase().replace(/[�?T'´]/g, "'").trim();
+      const key = s.toLowerCase().replace(/[’'´]/g, "'").trim();
       return TEAM_TIPO_SINONIMOS[key] || null;
     })
     .filter(Boolean);
@@ -1542,13 +1542,13 @@ function renderTeamPanel(){
     card.className = "incident-card" + (isResolved ? " resolved" : "");
     card.innerHTML = `
       <div class="incident-meta">
-        <span>�Y�� <strong>Club:</strong> ${escapeHtml(i.club || "Sin club")}</span>
-        <span>�Y"< <strong>Mes:</strong> ${escapeHtml(i.mes || "Sin mes")}</span>
-        <span>�Y.� <strong>Turno:</strong> ${escapeHtml(i.turno || "Sin turno")}</span>
-        <span>�Y'� <strong>Área/Rol:</strong> ${escapeHtml(i.area || "Sin área")}</span>
+        <span>🏢 <strong>Club:</strong> ${escapeHtml(i.club || "Sin club")}</span>
+        <span>📋 <strong>Mes:</strong> ${escapeHtml(i.mes || "Sin mes")}</span>
+        <span>🕐 <strong>Turno:</strong> ${escapeHtml(i.turno || "Sin turno")}</span>
+        <span>💼 <strong>Área/Rol:</strong> ${escapeHtml(i.area || "Sin área")}</span>
       </div>
-      <p class="incident-title">�Y��️ ${escapeHtml(i.tipo)}</p>
-      <div class="incident-comment">�Y'� <strong>Comentario del colaborador:</strong> ${escapeHtml(i.comentarios)}</div>
+      <p class="incident-title">🏷️ ${escapeHtml(i.tipo)}</p>
+      <div class="incident-comment">💬 <strong>Comentario del colaborador:</strong> ${escapeHtml(i.comentarios)}</div>
       <label style="font-weight:400;color:var(--gray);font-size:12px;display:block;margin-bottom:6px;">Comentario del equipo (acción tomada, pendientes, etc.)</label>
       <textarea class="incident-comment-field" placeholder="Escribe aquí el seguimiento de ${escapeHtml(team)}..."
         onchange="setTeamComment('${i.id}', this.value)">${escapeHtml(teamComment)}</textarea>
@@ -1681,9 +1681,9 @@ async function persistIncidentState(id){
     });
     const data = await res.json();
     if(!data || data.ok === false) throw new Error(data?.error || "Error desconocido");
-    if(noteEl) noteEl.textContent = "�o" Guardado en Google Sheets.";
+    if(noteEl) noteEl.textContent = "✓ Guardado en Google Sheets.";
   }catch(err){
-    if(noteEl) noteEl.textContent = "�s�️ No se pudo guardar en el Sheet, se guardó localmente.";
+    if(noteEl) noteEl.textContent = "⚠️ No se pudo guardar en el Sheet, se guardó localmente.";
     showTeamToast("No se pudo sincronizar con Google Sheets: " + err.message);
   }
 }

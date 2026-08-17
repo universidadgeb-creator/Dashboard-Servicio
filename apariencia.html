@@ -699,7 +699,7 @@
     <section class="section panel comments-panel">
       <div class="section-head"><div>
         <h2 class="section-title">Capital Humano | Comentarios relevantes</h2>
-        <p class="section-subtitle">Acceso interno �?" seguimiento y resolución de comentarios accionables.</p>
+        <p class="section-subtitle">Acceso interno — seguimiento y resolución de comentarios accionables.</p>
       </div></div>
 
       <div id="unlockBox" class="unlock-grid">
@@ -713,7 +713,7 @@
       <div id="commentsPanel" class="hidden">
         <div class="tab-row">
           <button class="tab-btn active" data-tab="pendientes">⏳ Pendientes</button>
-          <button class="tab-btn" data-tab="resueltos">�o. Resueltos</button>
+          <button class="tab-btn" data-tab="resueltos">✅ Resueltos</button>
           <button class="tab-btn" data-tab="todos">Todos</button>
         </div>
 
@@ -738,8 +738,8 @@
   <div id="gafeteModalOverlay" class="gafete-modal-overlay hidden" onclick="closeGafeteModalOnOverlay(event)">
     <div class="gafete-modal">
       <div class="gafete-modal-head">
-        <h3>Desglose de motivos �?" Gafete</h3>
-        <button type="button" id="gafeteModalClose" onclick="closeGafeteModal()">�o.</button>
+        <h3>Desglose de motivos — Gafete</h3>
+        <button type="button" id="gafeteModalClose" onclick="closeGafeteModal()">✕</button>
       </div>
       <p class="section-subtitle" style="margin:0 0 14px;">
         Distribución de motivos de falla, calculada sobre la selección de filtros globales
@@ -788,7 +788,7 @@
     "Center": {}
   };
 
-  // �"?�"?�"? CONFIG �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+  // ─── CONFIG ─────────────────────────────────────────────────────────────────
   const SHEET_ID      = "1tGCCClzUE0WBPJJ5TWZMmB35Vq_41BXvwl5LYAokKwg";
   const GID_FORM      = "0";   // Respuestas de formulario 1
   const COMMENTS_PWD  = "ch1234";
@@ -831,7 +831,7 @@
 
   // [FIX 2026-07-02] La comparación exacta fallaba en casos como el Sheet
   // trayendo "Reposición uniforme" contra el catálogo "Reposición de
-  // uniforme" (una palabra conectora de diferencia) �?" el select caía siempre
+  // uniforme" (una palabra conectora de diferencia) — el select caía siempre
   // en "Otro" mostrando además el texto original al lado, dando la impresión
   // de "doble clasificación". Ahora se ignoran palabras conectoras al
   // comparar, así ambas formas emparejan con la misma categoría fija.
@@ -855,10 +855,10 @@
     return { select: "Otro", custom: raw };
   }
 
-  // �"?�"?�"? ESTADO �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+  // ─── ESTADO ──────────────────────────────────────────────────────────────────
   let respuestas    = [];
   let comentStates  = {};  // { [commentId]: { resolved, resolvedDate, tipo } }
-  let hiddenComments = {}; // [NUEVO] (3) { [commentId]: true } �?" "Ocultar de la vista"
+  let hiddenComments = {}; // [NUEVO] (3) { [commentId]: true } — "Ocultar de la vista"
   let monthlyChart  = null;
   let activeTab     = "pendientes";
 
@@ -891,7 +891,7 @@
 
   Chart.register(ChartDataLabels);
 
-  // �"?�"?�"? STORAGE �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+  // ─── STORAGE ─────────────────────────────────────────────────────────────────
   const STORAGE_KEY = "ch_comment_states";
 
   async function loadCommentStates() {
@@ -907,7 +907,7 @@
     } catch(e) { console.error("Error guardando estados:", e); }
   }
 
-  // [NUEVO] (3) Botón "Ocultar de la vista" �?" solo local, no se persiste en Excel.
+  // [NUEVO] (3) Botón "Ocultar de la vista" — solo local, no se persiste en Excel.
   const HIDDEN_STORAGE_KEY = "ch_hidden_comments";
   async function loadHiddenComments() {
     try {
@@ -926,14 +926,14 @@
     renderComments();
   }
 
-  // �"?�"?�"? INIT �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+  // ─── INIT ────────────────────────────────────────────────────────────────────
   document.addEventListener("DOMContentLoaded", async () => {
     await loadCommentStates();
     await loadHiddenComments();
     bindEvents();
     setupEmptyDashboard();
     loadData();
-    loadBackendData(); // [NUEVO] (1)(2)(3)(4) �?" en paralelo, no bloquea la carga principal
+    loadBackendData(); // [NUEVO] (1)(2)(3)(4) — en paralelo, no bloquea la carga principal
   });
 
   function bindEvents() {
@@ -979,11 +979,11 @@
     fillSelect("avanceClub",      ["Todos",...CLUBS],  "Todos");
   }
 
-  // �"?�"?�"? CARGA DE DATOS �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+  // ─── CARGA DE DATOS ──────────────────────────────────────────────────────────
   // [FIX] Antes esta función armaba su propio JSONP directo a
   // docs.google.com/.../gviz (acceso público/anónimo). Ahora reutiliza
   // callAppsScript() para pedir la misma información, pero autenticada, a
-  // través del Web App de Codigo.gs �?" evita el límite/recorte del endpoint
+  // través del Web App de Codigo.gs — evita el límite/recorte del endpoint
   // público. El resto del parseo (parseGvizTable) no cambia porque el
   // backend entrega la tabla en la misma forma {cols, rows} que gviz.
   async function loadData() {
@@ -1005,9 +1005,9 @@
       if (respuestas.length === 0 && table.rows.length > 0) {
         // [NUEVO] Conexión OK pero el parseo descartó todo: probablemente
         // cambiaron los encabezados del Form. Ver detalle en consola.
-        showToast(`�s�️ Se conectó al Sheet (${table.rows.length} filas) pero 0 pasaron el filtro. Revisa la consola (F12) para ver el detalle de columnas.`);
+        showToast(`⚠️ Se conectó al Sheet (${table.rows.length} filas) pero 0 pasaron el filtro. Revisa la consola (F12) para ver el detalle de columnas.`);
       } else {
-        showToast("�o" " + respuestas.length + " registros cargados.");
+        showToast("✓ " + respuestas.length + " registros cargados.");
       }
     } catch (err) {
       console.error("[formResponses] Error procesando datos:", err);
@@ -1018,7 +1018,7 @@
   }
 
   /* ============================================================================
-   * [NUEVO] CARGA DEL BACKEND (Codigo.gs) �?" puntos (1), (2), (3) y (4)
+   * [NUEVO] CARGA DEL BACKEND (Codigo.gs) — puntos (1), (2), (3) y (4)
    * Se llama vía JSONP (igual patrón que loadData) para evitar problemas de
    * CORS, tanto para lectura como para "escritura" (saveResolution).
    * ==========================================================================*/
@@ -1098,7 +1098,7 @@
   function mergeResolucionesPersistidas_(resolucionesBackend) {
     if (!respuestas.length) return;
     // [FIX] Antes, si resolucionesBackend venía vacío (0 filas resueltas de
-    // verdad en el Excel), la función se salía sin hacer nada �?" dejando
+    // verdad en el Excel), la función se salía sin hacer nada — dejando
     // "pegados" para siempre en localStorage estados de "resuelto" viejos
     // (p.ej. de pruebas anteriores o de un bug ya corregido). Ahora el
     // backend manda SIEMPRE la última palabra: se recorren TODAS las
@@ -1120,12 +1120,12 @@
     saveCommentStates();
   }
 
-  // �"?�"?�"? PARSEO GVIZ �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
-  // [MODIFICADO �?" FIX 2026-07-02] Antes los índices de columna estaban
+  // ─── PARSEO GVIZ ─────────────────────────────────────────────────────────────
+  // [MODIFICADO — FIX 2026-07-02] Antes los índices de columna estaban
   // "quemados" en el código (ej. MES = índice 19), basados en una copia
   // exportada del Excel en un momento dado. Si el Google Form real agrega,
   // quita o reordena una pregunta, esos índices quedan desalineados y TODAS
-  // las filas se descartan silenciosamente (mes="" �?' se ignora la fila),
+  // las filas se descartan silenciosamente (mes="" → se ignora la fila),
   // lo que se ve como "0 registros cargados" con los selectores vacíos.
   //
   // Ahora los índices se resuelven de forma DINÁMICA leyendo los encabezados
@@ -1245,7 +1245,7 @@
       if (!mes) { droppedNoMes++; continue; }
 
       // [MODIFICADO 2026-07-02] La clasificación (col R: Gafete/Uniforme/...) ya
-      // NO se mezcla con el texto del comentario �?" se guarda aparte
+      // NO se mezcla con el texto del comentario — se guarda aparte
       // (tipoReporteSheet) para usarse como valor por defecto del selector
       // "Tipo" en el panel de Comentarios CH. El texto del comentario es la
       // explicación libre (col S); si no hay explicación, se usa la
@@ -1254,7 +1254,7 @@
       const explicaIncidencia = cleanText(get(idx.explicaIncidencia));
       const comentarios = explicaIncidencia || tipoReporte;
 
-      // Fecha del registro (col 0 �?" timestamp del formulario)
+      // Fecha del registro (col 0 — timestamp del formulario)
       let fecha = null;
       const tsCell = row.c && row.c[idx.timestamp];
       if (tsCell) {
@@ -1283,7 +1283,7 @@
       // marcar uno como "atendido" con fecha marcaba también al otro. Ahora se
       // usa el índice real de fila dentro de gviz (gvizRowIndex), que es único
       // por definición y además es el mismo valor que ya se usa para escribir
-      // la resolución en la hoja de origen �?" no hay forma de que colisione.
+      // la resolución en la hoja de origen — no hay forma de que colisione.
       const commentId = "row" + gvizIndex;
 
       rows.push({ club, mes, embajador, colaborador, rol, turno,
@@ -1300,7 +1300,7 @@
     return rows;
   }
 
-  // �"?�"?�"? SCORING �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+  // ─── SCORING ─────────────────────────────────────────────────────────────────
   function scoreH(t)  { return t.toUpperCase().includes("LIMPIAS Y BIEN CUIDADAS") ? 1 : 0; }
   function scoreP(t)  { return t.toUpperCase().includes("LIMPIO, PEINADO") ? 1 : 0; }
   function scoreA(t)  {
@@ -1318,7 +1318,7 @@
     return (u.includes("LADO DERECHO") && u.includes("COMPLETAMENTE VISIBLE")) ? 1 : 0;
   }
 
-  // �"?�"?�"? FILTROS �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+  // ─── FILTROS ─────────────────────────────────────────────────────────────────
   function populateFilters() {
     keepOrFill("filterMonth",    ["Todos",...MONTHS]);
     keepOrFill("filterClub",     ["Todos",...CLUBS]);
@@ -1351,7 +1351,7 @@
     s.value = selected || "Todos";
   }
 
-  // �"?�"?�"? RENDER PRINCIPAL �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+  // ─── RENDER PRINCIPAL ─────────────────────────────────────────────────────────
   function renderAll() {
     const filtered = getFilteredData();
     renderClubCards(filtered);
@@ -1380,7 +1380,7 @@
     });
   }
 
-  // [MODIFICADO] (1) CORRECCI�"N DE ORIGEN: esta tarjeta antes mostraba el
+  // [MODIFICADO] (1) CORRECCIÓN DE ORIGEN: esta tarjeta antes mostraba el
   // cumplimiento de la política de APARIENCIA (calcGeneral, criterios H/P/A/...)
   // rotulado como "Cumplimiento mensual de caminatas", lo que producía el
   // desfase reportado (p.ej. 98% en vez de 28%). Ahora usa el conteo real de
@@ -1523,13 +1523,13 @@
           conic-gradient(${col} 0deg,${col} ${deg}deg,#e8eef2 ${deg}deg 360deg);">
           <strong>${pct===null?"0":pct}%</strong>
         </div>
-        <h3>${cr.name}${isGafete ? ' �Y"�' : ''}</h3><p>${cr.description}</p>
+        <h3>${cr.name}${isGafete ? ' 🔍' : ''}</h3><p>${cr.description}</p>
         <span class="badge ${badgeClass(st)}">${st}</span>`;
       c.appendChild(card);
     });
   }
 
-  // �"?�"?�"? (4) PANEL DE DETALLE DE GAFETE �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+  // ─── (4) PANEL DE DETALLE DE GAFETE ─────────────────────────────────────────
   function openGafeteModal() {
     document.getElementById("gafeteModalOverlay").classList.remove("hidden");
     renderGafeteDonut();
@@ -1602,7 +1602,7 @@
     });
   }
 
-  // �"?�"?�"? AVANCE CAMINATAS �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+  // ─── AVANCE CAMINATAS ─────────────────────────────────────────────────────────
   function renderAvance() {
     const mes  = document.getElementById("avanceMonth").value;
     const club = document.getElementById("avanceClub").value;
@@ -1611,7 +1611,7 @@
     const clubsToShow = club==="Todos" ? CLUBS : [club];
     const mesesToShow = mes==="Todos" ? MONTHS : [mes];
 
-    // �"?�"? Resumen de totales por club (como reporte mensual) �"?�"?
+    // ── Resumen de totales por club (como reporte mensual) ──
     let summaryHtml = "";
     if (mes !== "Todos") {
       const summaryCards = clubsToShow.map(cl => {
@@ -1661,7 +1661,7 @@
       const barPct = Math.min(r.pct, 100);
       const barClass = r.pct >= 100 ? "" : r.pct >= 60 ? "yellow" : "red";
       const statusClass = r.pct >= 100 ? "prog-complete" : r.pct >= 60 ? "prog-pending" : "prog-low";
-      const statusText  = r.pct >= 100 ? "�o. Completo" : r.pct >= 60 ? "�s�️ En progreso" : "�O Por debajo";
+      const statusText  = r.pct >= 100 ? "✅ Completo" : r.pct >= 60 ? "⚠️ En progreso" : "❌ Por debajo";
       return `<tr>
         <td>${r.club}</td>
         <td>${r.mes}</td>
@@ -1690,7 +1690,7 @@
       </div>`;
   }
 
-  // �"?�"?�"? COMENTARIOS CH �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+  // ─── COMENTARIOS CH ───────────────────────────────────────────────────────────
   function unlockComments() {
     if (document.getElementById("commentsPassword").value.trim() !== COMMENTS_PWD) {
       showToast("Contraseña incorrecta."); return;
@@ -1722,7 +1722,7 @@
 
     // [MODIFICADO 2026-07-02] "base" = todo lo que cumple los filtros de
     // arriba (club/mes/rol/turno/tipo), antes de separar por pestaña
-    // pendientes/resueltos/todos �?" se usa para el resumen de incidencias.
+    // pendientes/resueltos/todos — se usa para el resumen de incidencias.
     const base = respuestas.filter(item =>
       (club  ==="Todos" || item.club  ===club)  &&
       (month ==="Todos" || item.mes   ===month) &&
@@ -1764,7 +1764,7 @@
       const canCheck    = !!resolvedDate;
 
       // Format fecha del comentario
-      let fechaStr = "�?"";
+      let fechaStr = "—";
       if (r.fecha instanceof Date && !isNaN(r.fecha)) {
         fechaStr = r.fecha.toLocaleDateString("es-MX", {day:"2-digit",month:"short",year:"numeric"});
       } else if (typeof r.fecha === "string" && r.fecha) {
@@ -1787,7 +1787,7 @@
           const rd = new Date(resolvedDate + "T00:00:00");
           const diff = Math.round((rd - r.fecha) / (1000*60*60*24));
           if (diff < 0) {
-            daysHtml = `<span class="days-badge overdue" title="La fecha de resolución (${resolvedDate}) es anterior a la fecha del registro (${fechaStr}). Revisa el año/fecha capturados.">�s�️ Fecha inválida</span>`;
+            daysHtml = `<span class="days-badge overdue" title="La fecha de resolución (${resolvedDate}) es anterior a la fecha del registro (${fechaStr}). Revisa el año/fecha capturados.">⚠️ Fecha inválida</span>`;
           } else {
             const cls = diff > 14 ? "overdue" : "";
             daysHtml = `<span class="days-badge ${cls}">${formatDuracion_(diff)} de resolución</span>`;
@@ -1802,15 +1802,15 @@
       return `
         <div class="comment-row${isResolved?" resolved":""}" id="cr_${r.commentId}">
           <div class="comment-meta">
-            <span>�Y". <strong>Fecha:</strong> ${fechaStr}</span>
-            <span>�Y�� <strong>Club:</strong> ${escapeHtml(r.club)}</span>
-            <span>�Y"< <strong>Mes:</strong> ${escapeHtml(r.mes)}</span>
-            <span>�Y'� <strong>Embajador:</strong> ${escapeHtml(r.embajador)}</span>
-            <span>�YZ� <strong>Evaluado:</strong> ${escapeHtml(r.colaborador)}</span>
-            <span>�Y'� <strong>Rol:</strong> ${escapeHtml(r.rol)}</span>
-            <span>�Y.� <strong>Turno:</strong> ${escapeHtml(r.turno)}</span>
+            <span>📅 <strong>Fecha:</strong> ${fechaStr}</span>
+            <span>🏢 <strong>Club:</strong> ${escapeHtml(r.club)}</span>
+            <span>📋 <strong>Mes:</strong> ${escapeHtml(r.mes)}</span>
+            <span>👤 <strong>Embajador:</strong> ${escapeHtml(r.embajador)}</span>
+            <span>🎯 <strong>Evaluado:</strong> ${escapeHtml(r.colaborador)}</span>
+            <span>💼 <strong>Rol:</strong> ${escapeHtml(r.rol)}</span>
+            <span>🕐 <strong>Turno:</strong> ${escapeHtml(r.turno)}</span>
           </div>
-          <div class="comment-body">�Y'� ${escapeHtml(r.comentarios)}</div>
+          <div class="comment-body">💬 ${escapeHtml(r.comentarios)}</div>
           <div class="comment-actions">
             <label title="${canCheck?'':'Primero ingresa la fecha de resolución'}">
               <input type="checkbox" onchange="toggleResolved('${r.commentId}', this.checked)"
@@ -1867,7 +1867,7 @@
 
     // [NUEVO] Promedio de días de resolución: solo sobre incidencias
     // atendidas con fecha de resolución válida (posterior o igual al
-    // registro) �?" las inválidas (ver "�s�️ Fecha inválida" en cada tarjeta)
+    // registro) — las inválidas (ver "⚠️ Fecha inválida" en cada tarjeta)
     // se excluyen para no descuadrar el promedio.
     const diasValidos = base.reduce((acc, r) => {
       const state = comentStates[r.commentId];
@@ -1883,7 +1883,7 @@
       ? Math.round(diasValidos.reduce((a,b) => a+b, 0) / diasValidos.length)
       : null;
     const promedioHtml = promedioDias === null
-      ? "�?""
+      ? "—"
       : formatDuracion_(promedioDias);
 
     if (!total) {
@@ -1932,7 +1932,7 @@
   async function setResolvedDate(id, gvizRowIndex, date) {
     if (!comentStates[id]) comentStates[id] = {};
     comentStates[id].resolvedDate = date;
-    // [FIX] Antes, poner la fecha no marcaba "resolved" �?" había que además
+    // [FIX] Antes, poner la fecha no marcaba "resolved" — había que además
     // tocar la casilla "Atendido por CH" aparte. Como el backend ya
     // considera atendido en cuanto hay fecha (ver mergeResolucionesPersistidas_),
     // aquí se refleja lo mismo de inmediato para no depender de un segundo paso.
@@ -1945,7 +1945,7 @@
   }
 
   // [MODIFICADO 2026-07-02] Clasificación rápida del tipo de incidencia.
-  // Si elige "Otro" no se persiste todavía �?" se espera a que escriba el texto
+  // Si elige "Otro" no se persiste todavía — se espera a que escriba el texto
   // en el campo que aparece al lado (ver setTipoIncidenciaOtro). Para el resto
   // de las categorías fijas, se persiste de inmediato.
   async function setTipoIncidencia(id, gvizRowIndex, tipo) {
@@ -1984,7 +1984,7 @@
   // dedicada ("Seguimiento de Incidencias", separada de las respuestas del
   // Form) a través del backend, para que no se pierda al recargar. Se manda
   // también club/colaborador/comentario/timestamp de contexto, tomados de
-  // `respuestas`, solo para que la hoja de seguimiento sea legible �?" la
+  // `respuestas`, solo para que la hoja de seguimiento sea legible — la
   // llave real sigue siendo gvizRowIndex.
   async function persistirResolucion_(gvizRowIndex, fecha, tipo, nota) {
     if (gvizRowIndex === undefined || gvizRowIndex === null || gvizRowIndex === "undefined") return;
@@ -2004,7 +2004,7 @@
     }
   }
 
-  // �"?�"?�"? CÁLCULOS �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+  // ─── CÁLCULOS ─────────────────────────────────────────────────────────────────
   function calcGeneral(rows) {
     let valid=0, compliant=0;
     rows.forEach(row => {
@@ -2032,7 +2032,7 @@
     return r[0];
   }
 
-  // �"?�"?�"? ESTADOS �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+  // ─── ESTADOS ─────────────────────────────────────────────────────────────────
   function getState(pct,count) {
     if (!count||pct===null||isNaN(pct)) return "Sin datos";
     if (pct>=90) return "Excelente";
@@ -2052,7 +2052,7 @@
     return "gray";
   }
 
-  // �"?�"?�"? NORMALIZACI�"N �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+  // ─── NORMALIZACIÓN ────────────────────────────────────────────────────────────
   // [NUEVO] Helper genérico de normalización de texto (usado por resolveGvizColumns_)
   function normalizeText(v) {
     return String(v||"").trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");
@@ -2096,7 +2096,7 @@
 
   // [NUEVO] Convierte una cantidad de días a un texto legible: días si es
   // poco tiempo, meses si ya pasó más de un mes, años (+ meses) si es más
-  // de un año �?" para no mostrar cosas como "62 días" cuando son "2 meses".
+  // de un año — para no mostrar cosas como "62 días" cuando son "2 meses".
   function formatDuracion_(diffDays) {
     if (diffDays <= 31) {
       return diffDays + " día" + (diffDays !== 1 ? "s" : "");
@@ -2167,7 +2167,7 @@
       .replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
   }
 
-  // �"?�"?�"? UI �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+  // ─── UI ───────────────────────────────────────────────────────────────────────
   function setLoading(on) {
     document.body.classList.toggle("is-loading", on);
     const rb = document.getElementById("refreshTopBtn");
