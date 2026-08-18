@@ -289,6 +289,26 @@
       box-shadow: 0 0 0 4px rgba(0, 120, 130, 0.12);
     }
 
+    select[multiple] {
+      min-height: 104px;
+      padding: 6px;
+    }
+
+    select[multiple] option {
+      padding: 6px 8px;
+      border-radius: 8px;
+    }
+
+    .field-hint {
+      display: block;
+      margin-top: 3px;
+      font-size: 11px;
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: normal;
+      color: var(--muted);
+    }
+
     .button-row {
       display: flex;
       gap: 10px;
@@ -637,7 +657,7 @@
       <div class="filters-grid">
         <div class="field"><label for="filterMonth">Mes</label><select id="filterMonth"></select></div>
         <div class="field"><label for="filterClub">Club</label><select id="filterClub"></select></div>
-        <div class="field"><label for="filterRole">Rol</label><select id="filterRole"></select></div>
+        <div class="field"><label for="filterRole">Rol<span class="field-hint">Ctrl/Cmd + clic para elegir varios</span></label><select id="filterRole" multiple></select></div>
         <div class="field"><label for="filterShift">Turno</label><select id="filterShift"></select></div>
         <div class="field"><label for="filterCriterion">Criterio</label><select id="filterCriterion"></select></div>
       </div>
@@ -955,8 +975,9 @@
     document.getElementById("avanceClub").addEventListener("change", renderAvance);
     document.getElementById("refreshTopBtn").addEventListener("click", () => { loadData(); loadBackendData(); });
     document.getElementById("clearFiltersBtn").addEventListener("click", () => {
-      ["filterMonth","filterClub","filterRole","filterShift","filterCriterion"]
+      ["filterMonth","filterClub","filterShift","filterCriterion"]
         .forEach(id => document.getElementById(id).value = "Todos");
+      Array.from(document.getElementById("filterRole").options).forEach(o => o.selected = false);
       renderAll();
     });
     document.getElementById("unlockCommentsBtn").addEventListener("click", unlockComments);
@@ -976,7 +997,7 @@
   function setupEmptyDashboard() {
     fillSelect("filterMonth",     ["Todos",...MONTHS], "Todos");
     fillSelect("filterClub",      ["Todos",...CLUBS],  "Todos");
-    fillSelect("filterRole",      ["Todos"],            "Todos");
+    fillMultiSelect("filterRole", []);
     fillSelect("filterShift",     ["Todos"],            "Todos");
     fillSelect("filterCriterion", ["Todos",...CRITERIA.map(c=>c.name)], "Todos");
     fillSelect("commentClub",     ["Todos",...CLUBS],  "Todos");
@@ -1332,7 +1353,7 @@
   function populateFilters() {
     keepOrFill("filterMonth",    ["Todos",...MONTHS]);
     keepOrFill("filterClub",     ["Todos",...CLUBS]);
-    keepOrFill("filterRole",     ["Todos",...unique(respuestas.map(d=>d.rol)).sort()]);
+    keepOrFillMulti("filterRole", unique(respuestas.map(d=>d.rol)).sort());
     keepOrFill("filterShift",    ["Todos",...unique(respuestas.map(d=>d.turno)).sort()]);
     keepOrFill("filterCriterion",["Todos",...CRITERIA.map(c=>c.name)]);
     keepOrFill("commentClub",    ["Todos",...CLUBS]);
@@ -1361,6 +1382,27 @@
     s.value = selected || "Todos";
   }
 
+  // Select múltiple de Rol: sin selección = "Todos los roles". Permite
+  // elegir varios roles a la vez para ver el promedio de un área completa
+  // en vez de un rol a la vez. Preserva la selección previa si sigue vigente.
+  function fillMultiSelect(id, opts) {
+    const s = document.getElementById(id);
+    const prevSelected = getSelectedValues(id).filter(v => opts.includes(v));
+    s.innerHTML = "";
+    opts.filter(Boolean).forEach(v => {
+      const o = document.createElement("option");
+      o.value = o.textContent = v;
+      o.selected = prevSelected.includes(v);
+      s.appendChild(o);
+    });
+  }
+  function keepOrFillMulti(id, opts) {
+    fillMultiSelect(id, opts);
+  }
+  function getSelectedValues(id) {
+    return Array.from(document.getElementById(id).selectedOptions).map(o => o.value);
+  }
+
   // ─── RENDER PRINCIPAL ─────────────────────────────────────────────────────────
   function renderAll() {
     const filtered = getFilteredData();
@@ -1377,14 +1419,14 @@
   function getFilteredData() {
     const month    = document.getElementById("filterMonth").value;
     const club     = document.getElementById("filterClub").value;
-    const role     = document.getElementById("filterRole").value;
+    const roles    = getSelectedValues("filterRole");
     const shift    = document.getElementById("filterShift").value;
     const critName = document.getElementById("filterCriterion").value;
     const crit     = CRITERIA.find(c => c.name === critName);
     return respuestas.filter(item => {
       if (month !== "Todos" && item.mes   !== month) return false;
       if (club  !== "Todos" && item.club  !== club)  return false;
-      if (role  !== "Todos" && item.rol   !== role)  return false;
+      if (roles.length && !roles.includes(item.rol)) return false;
       if (shift !== "Todos" && item.turno !== shift) return false;
       if (crit) { const v = item.criterios[crit.key]; if (v!==0&&v!==1) return false; }
       return true;
@@ -1489,11 +1531,11 @@
   // la propia gráfica; tampoco el de Criterio, para no colapsar el promedio
   // general a un solo criterio).
   function getRowsForMonthClub_(club, month) {
-    const role  = document.getElementById("filterRole").value;
+    const roles = getSelectedValues("filterRole");
     const shift = document.getElementById("filterShift").value;
     return respuestas.filter(r => {
       if (r.club !== club || r.mes !== month) return false;
-      if (role  !== "Todos" && r.rol   !== role)  return false;
+      if (roles.length && !roles.includes(r.rol)) return false;
       if (shift !== "Todos" && r.turno !== shift) return false;
       return true;
     });
@@ -1654,13 +1696,13 @@
     const month = document.getElementById("filterMonth").value;
     const club  = document.getElementById("filterClub").value;
     const shift = document.getElementById("filterShift").value;
-    const role  = document.getElementById("filterRole").value;
+    const roles = getSelectedValues("filterRole");
 
     const filtered = motivosGafeteData.filter(m =>
       (month === "Todos" || m.mes   === month) &&
       (club  === "Todos" || m.club  === club)  &&
       (shift === "Todos" || m.turno === shift) &&
-      (role  === "Todos" || m.rol   === role)
+      (!roles.length || roles.includes(m.rol))
     );
 
     const totals = {};

@@ -132,6 +132,61 @@
       box-shadow:0 0 0 3px rgba(0,120,130,.14);
     }
 
+    select[multiple]{
+      height:auto;
+      padding:6px;
+    }
+
+    select[multiple] option{
+      padding:6px 8px;
+      border-radius:8px;
+    }
+
+    .field-hint{
+      display:block;
+      margin:-4px 0 6px;
+      font-size:11px;
+      font-weight:400;
+      text-transform:none;
+      letter-spacing:normal;
+      color:var(--gray);
+    }
+
+    .table-wrap{
+      margin-top:4px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      overflow-x:auto;
+      background:var(--card);
+    }
+
+    .table-wrap table{
+      width:100%;
+      min-width:640px;
+      border-collapse:collapse;
+    }
+
+    .table-wrap th,.table-wrap td{
+      padding:12px 14px;
+      border-bottom:1px solid var(--line);
+      text-align:left;
+      font-size:13px;
+      vertical-align:top;
+    }
+
+    .table-wrap th{
+      background:var(--brand-soft);
+      color:var(--brand-dark);
+      text-transform:uppercase;
+      letter-spacing:.03em;
+      font-size:11px;
+    }
+
+    .table-wrap tr:last-child td{border-bottom:0}
+
+    .table-wrap .hi{color:var(--green);font-weight:700}
+    .table-wrap .lo{color:var(--red);font-weight:700}
+
     .grid-3{
       display:grid;
       grid-template-columns:repeat(3,minmax(0,1fr));
@@ -691,8 +746,8 @@
           <select id="club"></select>
         </div>
         <div>
-          <label>Rol o área</label>
-          <select id="area"></select>
+          <label>Rol o área <span class="field-hint">(Ctrl/Cmd + clic para elegir varias)</span></label>
+          <select id="area" multiple size="4"></select>
         </div>
         <div>
           <label>Turno</label>
@@ -733,6 +788,23 @@
           <strong id="lowestName" style="font-size:22px">--</strong>
           <small id="lowestScore">Sin datos</small>
         </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>Resultado general por mes</h2>
+          <p class="note">Promedio de cumplimiento de cada mes, con el criterio más alto y más bajo. Respeta los filtros de Club, Rol/Área y Turno.</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Mes</th><th>Resultado general</th><th>Criterio más alto</th><th>Criterio más bajo</th></tr>
+          </thead>
+          <tbody id="monthlyResultsBody"></tbody>
+        </table>
       </div>
     </section>
 
@@ -944,7 +1016,7 @@ async function loadData(){
 function setupFilters(){
   populate("mes", unique(records.map(r=>r.mes).filter(Boolean)).sort(sortMonths), "Todos los meses");
   populate("club", CLUBS, "Todos los clubes");
-  populate("area", unique(records.map(r=>r.area).filter(Boolean)).sort(), "Todas las áreas");
+  populateMulti("area", unique(records.map(r=>r.area).filter(Boolean)).sort());
   populate("turno", unique(records.map(r=>r.turno).filter(Boolean)).sort(), "Todos los turnos");
 }
 
@@ -959,17 +1031,36 @@ function populate(id, values, allLabel){
   });
 }
 
+// Select múltiple: ninguna opción seleccionada equivale a "todas". Preserva
+// la selección previa si sigue existiendo en la nueva lista de valores.
+function populateMulti(id, values){
+  const el = document.getElementById(id);
+  const prevSelected = getSelectedValues(id).filter(v=>values.includes(v));
+  el.innerHTML = "";
+  values.forEach(v=>{
+    const opt = document.createElement("option");
+    opt.value = v;
+    opt.textContent = v;
+    opt.selected = prevSelected.includes(v);
+    el.appendChild(opt);
+  });
+}
+
+function getSelectedValues(id){
+  return Array.from(document.getElementById(id).selectedOptions).map(o=>o.value);
+}
+
 function filteredRecords(){
   const vista = document.getElementById("vista").value;
   const mes = document.getElementById("mes").value;
   const club = document.getElementById("club").value;
-  const area = document.getElementById("area").value;
+  const areas = getSelectedValues("area");
   const turno = document.getElementById("turno").value;
 
   return records.filter(r=>{
     if(vista === "mensual" && mes && r.mes !== mes) return false;
     if(club && r.club !== club) return false;
-    if(area && r.area !== area) return false;
+    if(areas.length && !areas.includes(r.area)) return false;
     if(turno && r.turno !== turno) return false;
     return true;
   });
@@ -982,6 +1073,7 @@ function render(){
   renderClubs();
   renderGeneral(agg, data.length);
   renderMonthly();
+  renderMonthlyResults();
   renderCriteria(agg.categories);
   renderGoals(agg.goals);
 }
@@ -1095,6 +1187,58 @@ function aggregate(data){
   };
 }
 
+// Igual que filteredRecords(), pero ignora "Vista"/"Mes" porque esta tabla
+// arma su propia fila por cada mes de la temporada; sí respeta Club,
+// Rol/Área (selección múltiple) y Turno.
+function recordsForMonth_(mes){
+  const club = document.getElementById("club").value;
+  const areas = getSelectedValues("area");
+  const turno = document.getElementById("turno").value;
+
+  return records.filter(r=>{
+    if(r.mes !== mes) return false;
+    if(club && r.club !== club) return false;
+    if(areas.length && !areas.includes(r.area)) return false;
+    if(turno && r.turno !== turno) return false;
+    return true;
+  });
+}
+
+function renderMonthlyResults(){
+  const body = document.getElementById("monthlyResultsBody");
+  if(!body) return;
+  body.innerHTML = "";
+
+  MESES_CAMINATAS.forEach(mes=>{
+    const data = recordsForMonth_(mes);
+    const agg = aggregate(data);
+    const cats = agg.categories.filter(c=>c.percentage !== null);
+
+    const tr = document.createElement("tr");
+    if(!cats.length){
+      tr.innerHTML = `
+        <td>${escapeHtml(mes)}</td>
+        <td>Sin datos</td>
+        <td>--</td>
+        <td>--</td>
+      `;
+      body.appendChild(tr);
+      return;
+    }
+
+    const top = cats.slice().sort((a,b)=>b.percentage-a.percentage)[0];
+    const low = cats.slice().sort((a,b)=>a.percentage-b.percentage)[0];
+
+    tr.innerHTML = `
+      <td>${escapeHtml(mes)}</td>
+      <td>${fmt(agg.general)}</td>
+      <td class="hi">${escapeHtml(top.name)} (${fmt(top.percentage)})</td>
+      <td class="lo">${escapeHtml(low.name)} (${fmt(low.percentage)})</td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
 function renderGeneral(agg,count){
   document.getElementById("generalScore").textContent = fmt(agg.general);
   document.getElementById("generalCount").textContent = count === 1 ? "1 caminata filtrada" : `${count} caminatas filtradas`;
@@ -1146,8 +1290,7 @@ function renderClubs(){
       </div>
       <div>
         <h3>${escapeHtml(club)}</h3>
-        <p><strong>${fmt(p)}</strong> de cumplimiento real (Real/Meta).</p>
-        <p>${entries.length ? "Información filtrada automáticamente." : "Sin registros con los filtros actuales."}</p>
+        <p><strong>${fmt(p)}</strong> de cumplimiento real</p>
       </div>
     `;
     wrap.appendChild(div);
