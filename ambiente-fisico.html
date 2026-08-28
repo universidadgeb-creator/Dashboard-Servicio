@@ -11,8 +11,8 @@
       --brand-dark:#005f66;
       --brand-soft:#e9f7f7;
       --nu:#007882;
-      --gmt:#70d3d1;
-      --vr:#9ee1e1;
+      --gmt:#7cd4d2;
+      --vr:#59898c;
       --green:#2e7d32;
       --yellow:#f9a825;
       --red:#c62828;
@@ -902,11 +902,13 @@
 const API_URL = "https://script.google.com/macros/s/AKfycbz6WmHxuK6y39DWWUvhVwL7TMkoJs9jHQYTnm8g6MyyJvaUwf-rsuoMl1R6Dp60y8x3/exec";
 
 const CLUBS = ["Naciones Unidas", "Gourmetería", "Valle Real", "Center"];
+// [FIX] Unificado con la paleta de apariencia.html (antes tenía valores
+// distintos: Gourmetería #70d3d1, Valle Real #9ee1e1, Center #f2a154).
 const CLUB_COLORS = {
   "Naciones Unidas":"#007882",
-  "Gourmetería":"#70d3d1",
-  "Valle Real":"#9ee1e1",
-  "Center":"#f2a154"
+  "Gourmetería":"#7cd4d2",
+  "Valle Real":"#59898c",
+  "Center":"#4f5758"
 };
 
 const CATEGORY_ORDER = ["Mantenimiento","5's","Limpieza en Vestidores","Limpieza General"];
@@ -990,8 +992,14 @@ function bindFilters(){
 }
 
 async function loadData(){
+  // [FIX] El fetch no tenía límite de tiempo: si Apps Script tarda en
+  // responder (arranque en frío, cuota excedida), la petición podía quedar
+  // colgada indefinidamente y el loader nunca se ocultaba. Se agrega un
+  // timeout con AbortController.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
   try{
-    const res = await fetch(API_URL + "?t=" + Date.now(), {cache:"no-store"});
+    const res = await fetch(API_URL + "?t=" + Date.now(), {cache:"no-store", signal: controller.signal});
     if(!res.ok) throw new Error("HTTP " + res.status);
 
     payload = await res.json();
@@ -1007,8 +1015,12 @@ async function loadData(){
     setupTeamFilters();
     renderTeamPanel();
   }catch(err){
-    showError("No se pudo cargar la información desde Apps Script. Revisa que la implementación esté publicada como aplicación web y con acceso para cualquier persona. Detalle: " + err.message);
+    const msg = err.name === "AbortError"
+      ? "Se agotó el tiempo de espera al conectar con Apps Script. Intenta actualizar de nuevo."
+      : "No se pudo cargar la información desde Apps Script. Revisa que la implementación esté publicada como aplicación web y con acceso para cualquier persona. Detalle: " + err.message;
+    showError(msg);
   }finally{
+    clearTimeout(timeoutId);
     document.getElementById("loader").style.display = "none";
   }
 }
@@ -1187,30 +1199,29 @@ function aggregate(data){
   };
 }
 
-// Igual que filteredRecords(), pero ignora "Vista"/"Mes" porque esta tabla
-// arma su propia fila por cada mes de la temporada; sí respeta Club,
-// Rol/Área (selección múltiple) y Turno.
-function recordsForMonth_(mes){
-  const club = document.getElementById("club").value;
-  const areas = getSelectedValues("area");
-  const turno = document.getElementById("turno").value;
-
-  return records.filter(r=>{
-    if(r.mes !== mes) return false;
-    if(club && r.club !== club) return false;
-    if(areas.length && !areas.includes(r.area)) return false;
-    if(turno && r.turno !== turno) return false;
-    return true;
-  });
-}
-
 function renderMonthlyResults(){
   const body = document.getElementById("monthlyResultsBody");
   if(!body) return;
   body.innerHTML = "";
 
+  // [FIX] Antes recordsForMonth_(mes) recorría TODO el arreglo `records`
+  // una vez POR CADA uno de los 9 meses de MESES_CAMINATAS, reaplicando el
+  // mismo filtro de club/área/turno 9 veces (O(9×N) solo para separar por
+  // mes). Ahora el filtro se aplica una sola vez y se agrupa por mes.
+  const club_ = document.getElementById("club").value;
+  const areas_ = getSelectedValues("area");
+  const turno_ = document.getElementById("turno").value;
+  const byMonth = new Map();
+  records.forEach(r=>{
+    if(club_ && r.club !== club_) return;
+    if(areas_.length && !areas_.includes(r.area)) return;
+    if(turno_ && r.turno !== turno_) return;
+    if(!byMonth.has(r.mes)) byMonth.set(r.mes, []);
+    byMonth.get(r.mes).push(r);
+  });
+
   MESES_CAMINATAS.forEach(mes=>{
-    const data = recordsForMonth_(mes);
+    const data = byMonth.get(mes) || [];
     const agg = aggregate(data);
     const cats = agg.categories.filter(c=>c.percentage !== null);
 
@@ -1678,8 +1689,14 @@ function renderTeamPanel(){
     // Días que tardó en resolverse: diferencia entre la fecha de la
     // caminata (cuando se detectó) y la fecha de resolución capturada.
     const dias = computeDiasResolucion(i.fecha, resolvedDate);
-    const diasHtml = dias === null ? "" :
-      `<span class="pill" style="background:${dias > 14 ? "var(--red)" : "var(--green)"};min-width:auto;">${dias} día${dias!==1?"s":""} en resolverse</span>`;
+    // [FIX] Antes, una fecha de resolución capturada por error antes de la
+    // fecha de la incidencia se descartaba en silencio (dias===null se
+    // renderizaba como ""), igual que cuando aún no había fecha capturada.
+    // Ahora se distingue: si ya hay resolvedDate pero el resultado es
+    // inválido, se avisa en vez de ocultarlo (igual que en apariencia.html).
+    const diasHtml = dias !== null
+      ? `<span class="pill" style="background:${dias > 14 ? "var(--red)" : "var(--green)"};min-width:auto;">${dias} día${dias!==1?"s":""} en resolverse</span>`
+      : (resolvedDate ? `<span class="pill" style="background:var(--red);min-width:auto;" title="La fecha de resolución (${escapeHtml(resolvedDate)}) es anterior a la fecha de la caminata. Revisa el año/fecha capturados.">⚠️ Fecha inválida</span>` : "");
 
     const card = document.createElement("div");
     card.className = "incident-card" + (isResolved ? " resolved" : "");
