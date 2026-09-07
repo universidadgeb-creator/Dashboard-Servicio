@@ -372,8 +372,22 @@
       padding: 9px 10px;
       border-radius: 8px;
       cursor: pointer;
-      font-size: 14px;
       user-select: none;
+    }
+
+    /* [FIX] Cada fila del panel es un <label>, y la regla ".field label"
+       (pensada para el texto "ROL"/"MES"/etc. arriba del filtro) le ganaba
+       en especificidad CSS (".field label" = clase+etiqueta > ".msel-option"
+       = una sola clase), dejando las opciones en mayúsculas, negritas y en
+       gris tenue aunque se intentara sobreescribir en la regla de arriba.
+       Se usa un selector más específico para que sí gane, y se restablece a
+       texto normal, igual que el resto de las opciones (mes, club, etc.). */
+    .msel-panel .msel-option {
+      font-size: 14px;
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: normal;
+      color: var(--text);
     }
 
     .msel-option:hover {
