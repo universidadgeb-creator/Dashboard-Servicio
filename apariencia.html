@@ -1175,7 +1175,12 @@
       }
     } catch (err) {
       console.error("[formResponses] Error procesando datos:", err);
-      showToast("Error al procesar datos: " + err.message + " Verifica APPS_SCRIPT_URL y que el Web App esté implementado con la última versión.");
+      // [FIX] Se agrega el detalle de lastAppsScriptFailReason_ (qué acción
+      // falló y por qué: timeout, error de red o respuesta inesperada) para
+      // poder diagnosticar directo desde el mensaje, sin depender de que se
+      // pueda abrir la consola del navegador.
+      const detalle = lastAppsScriptFailReason_ ? ` Detalle: ${lastAppsScriptFailReason_}.` : "";
+      showToast("Error al procesar datos: " + err.message + "." + detalle + " Verifica APPS_SCRIPT_URL y que el Web App esté implementado con la última versión.");
     } finally {
       setLoading(false);
     }
@@ -1186,6 +1191,14 @@
    * Se llama vía JSONP (igual patrón que loadData) para evitar problemas de
    * CORS, tanto para lectura como para "escritura" (saveResolution).
    * ==========================================================================*/
+  // [NUEVO] Guarda en texto plano la última razón de falla de
+  // callAppsScript (timeout, error de red al cargar el script, o respuesta
+  // inesperada del backend). loadData() la muestra directo en el toast de
+  // error para poder diagnosticar sin necesitar abrir la consola (F12), que
+  // en algunas laptops (ej. HP con tecla programable) ni siquiera abre las
+  // herramientas de desarrollador.
+  let lastAppsScriptFailReason_ = "";
+
   function callAppsScriptOnce_(action, extraParams) {
     return new Promise((resolve) => {
       if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf("TU_ID_DE_DESPLIEGUE") >= 0) {
@@ -1204,14 +1217,17 @@
       window[cbName] = function(data) {
         cleanup();
         if (!data) {
+          lastAppsScriptFailReason_ = `${action}: respuesta vacía/nula del backend`;
           console.warn(`[Codigo.gs] action=${action} devolvió una respuesta vacía/nula.`);
         } else if (!data.ok) {
+          lastAppsScriptFailReason_ = `${action}: el backend respondió con error (${data.message || data.error || "sin detalle"})`;
           console.error(`[Codigo.gs] action=${action} falló:`, data.message || data);
         }
         resolve(data && data.ok ? data.data : null);
       };
       timer = setTimeout(() => {
         cleanup();
+        lastAppsScriptFailReason_ = `${action}: se agotó el tiempo de espera (${Math.round(JSONP_TIMEOUT/1000)}s) esperando respuesta de Apps Script`;
         console.warn(`[Codigo.gs] action=${action} agotó el tiempo de espera (${JSONP_TIMEOUT}ms). Verifica APPS_SCRIPT_URL y que el Web App esté implementado con acceso "Cualquier usuario".`);
         resolve(null);
       }, JSONP_TIMEOUT);
@@ -1220,6 +1236,7 @@
       script.id = cbName;
       script.onerror = () => {
         cleanup();
+        lastAppsScriptFailReason_ = `${action}: el navegador no pudo cargar el script de Apps Script (posible bloqueo de red/firewall/extensión)`;
         console.error(`[Codigo.gs] No se pudo cargar el script de action=${action}. Verifica APPS_SCRIPT_URL:`, APPS_SCRIPT_URL);
         resolve(null);
       };
