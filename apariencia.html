@@ -1187,62 +1187,65 @@
   }
 
   /* ============================================================================
-   * [NUEVO] CARGA DEL BACKEND (Codigo.gs) — puntos (1), (2), (3) y (4)
-   * Se llama vía JSONP (igual patrón que loadData) para evitar problemas de
-   * CORS, tanto para lectura como para "escritura" (saveResolution).
+   * [FIX] Antes se llamaba vía JSONP (un <script> inyectado dinámicamente)
+   * para evitar problemas de CORS. Pero el backend SÍ tiene CORS habilitado
+   * (Access-Control-Allow-Origin: *, verificado en directo), y en la
+   * práctica varias redes de escuela/oficina, antivirus o extensiones de
+   * navegador bloquean específicamente ese patrón de "inyectar un <script>
+   * externo" por parecer carga de script de terceros — mientras que un
+   * fetch() normal sí pasa. Se cambia a fetch() (mismo patrón que ya usa
+   * ambiente-fisico.html contra su propio backend, sin este problema).
    * ==========================================================================*/
   // [NUEVO] Guarda en texto plano la última razón de falla de
-  // callAppsScript (timeout, error de red al cargar el script, o respuesta
-  // inesperada del backend). loadData() la muestra directo en el toast de
-  // error para poder diagnosticar sin necesitar abrir la consola (F12), que
-  // en algunas laptops (ej. HP con tecla programable) ni siquiera abre las
+  // callAppsScript (timeout, bloqueo de red, o respuesta inesperada del
+  // backend). loadData() la muestra directo en el toast de error para poder
+  // diagnosticar sin necesitar abrir la consola (F12), que en algunas
+  // laptops (ej. HP con tecla programable) ni siquiera abre las
   // herramientas de desarrollador.
   let lastAppsScriptFailReason_ = "";
 
-  function callAppsScriptOnce_(action, extraParams) {
-    return new Promise((resolve) => {
-      if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf("TU_ID_DE_DESPLIEGUE") >= 0) {
-        // No configurado todavía: falla silenciosamente y se usan respaldos locales.
-        resolve(null);
-        return;
+  async function callAppsScriptOnce_(action, extraParams) {
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf("TU_ID_DE_DESPLIEGUE") >= 0) {
+      // No configurado todavía: falla silenciosamente y se usan respaldos locales.
+      return null;
+    }
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), JSONP_TIMEOUT);
+    try {
+      const params = new URLSearchParams({ action, t: Date.now(), ...(extraParams||{}) });
+      const res = await fetch(`${APPS_SCRIPT_URL}?${params.toString()}`, {
+        signal: controller.signal,
+        cache: "no-store"
+      });
+      if (!res.ok) {
+        lastAppsScriptFailReason_ = `${action}: el servidor respondió HTTP ${res.status}`;
+        console.error(`[Codigo.gs] action=${action} respondió HTTP ${res.status}`);
+        return null;
       }
-      const cbName = "_appsScriptCb_" + Date.now() + "_" + Math.floor(Math.random()*1e6);
-      let timer = null;
-      function cleanup() {
-        clearTimeout(timer);
-        const s = document.getElementById(cbName);
-        if (s) s.remove();
-        try { delete window[cbName]; } catch(e) {}
+      const data = await res.json();
+      if (!data) {
+        lastAppsScriptFailReason_ = `${action}: respuesta vacía/nula del backend`;
+        console.warn(`[Codigo.gs] action=${action} devolvió una respuesta vacía/nula.`);
+        return null;
       }
-      window[cbName] = function(data) {
-        cleanup();
-        if (!data) {
-          lastAppsScriptFailReason_ = `${action}: respuesta vacía/nula del backend`;
-          console.warn(`[Codigo.gs] action=${action} devolvió una respuesta vacía/nula.`);
-        } else if (!data.ok) {
-          lastAppsScriptFailReason_ = `${action}: el backend respondió con error (${data.message || data.error || "sin detalle"})`;
-          console.error(`[Codigo.gs] action=${action} falló:`, data.message || data);
-        }
-        resolve(data && data.ok ? data.data : null);
-      };
-      timer = setTimeout(() => {
-        cleanup();
+      if (!data.ok) {
+        lastAppsScriptFailReason_ = `${action}: el backend respondió con error (${data.message || data.error || "sin detalle"})`;
+        console.error(`[Codigo.gs] action=${action} falló:`, data.message || data);
+        return null;
+      }
+      return data.data;
+    } catch (err) {
+      if (err.name === "AbortError") {
         lastAppsScriptFailReason_ = `${action}: se agotó el tiempo de espera (${Math.round(JSONP_TIMEOUT/1000)}s) esperando respuesta de Apps Script`;
-        console.warn(`[Codigo.gs] action=${action} agotó el tiempo de espera (${JSONP_TIMEOUT}ms). Verifica APPS_SCRIPT_URL y que el Web App esté implementado con acceso "Cualquier usuario".`);
-        resolve(null);
-      }, JSONP_TIMEOUT);
-      const params = new URLSearchParams({ action, callback: cbName, t: Date.now(), ...(extraParams||{}) });
-      const script = document.createElement("script");
-      script.id = cbName;
-      script.onerror = () => {
-        cleanup();
-        lastAppsScriptFailReason_ = `${action}: el navegador no pudo cargar el script de Apps Script (posible bloqueo de red/firewall/extensión)`;
-        console.error(`[Codigo.gs] No se pudo cargar el script de action=${action}. Verifica APPS_SCRIPT_URL:`, APPS_SCRIPT_URL);
-        resolve(null);
-      };
-      script.src = `${APPS_SCRIPT_URL}?${params.toString()}`;
-      document.body.appendChild(script);
-    });
+        console.warn(`[Codigo.gs] action=${action} agotó el tiempo de espera (${JSONP_TIMEOUT}ms).`);
+      } else {
+        lastAppsScriptFailReason_ = `${action}: el navegador no pudo completar la solicitud (${err.message}) — posible bloqueo de red/firewall/extensión`;
+        console.error(`[Codigo.gs] fetch falló para action=${action}:`, err);
+      }
+      return null;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   // [FIX] La respuesta de "formResponses" pesa varios cientos de KB y se
