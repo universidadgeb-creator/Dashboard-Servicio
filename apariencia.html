@@ -942,7 +942,12 @@
   const SHEET_ID      = "1tGCCClzUE0WBPJJ5TWZMmB35Vq_41BXvwl5LYAokKwg";
   const GID_FORM      = "0";   // Respuestas de formulario 1
   const COMMENTS_PWD  = "ch1234";
-  const JSONP_TIMEOUT = 20000;
+  // [FIX] 20s se quedaba corto cuando Apps Script tiene "arranque en frío"
+  // (no se usa por un rato y tarda unos segundos extra en responder la
+  // primera vez); probado en directo el endpoint responde en <2s en
+  // condiciones normales, así que 35s da margen sin hacer esperar de más
+  // cuando sí falla de verdad.
+  const JSONP_TIMEOUT = 35000;
 
   // [NUEVO] URL del Web App de Apps Script (Codigo.gs) publicado como
   // "Cualquier usuario, incluso anónimo". Reemplaza por tu URL real de
