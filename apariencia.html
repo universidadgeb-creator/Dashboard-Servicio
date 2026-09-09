@@ -1180,7 +1180,7 @@
    * Se llama vía JSONP (igual patrón que loadData) para evitar problemas de
    * CORS, tanto para lectura como para "escritura" (saveResolution).
    * ==========================================================================*/
-  function callAppsScript(action, extraParams) {
+  function callAppsScriptOnce_(action, extraParams) {
     return new Promise((resolve) => {
       if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf("TU_ID_DE_DESPLIEGUE") >= 0) {
         // No configurado todavía: falla silenciosamente y se usan respaldos locales.
@@ -1220,6 +1220,20 @@
       script.src = `${APPS_SCRIPT_URL}?${params.toString()}`;
       document.body.appendChild(script);
     });
+  }
+
+  // [FIX] La respuesta de "formResponses" pesa varios cientos de KB y se
+  // descarga completa en cada carga del dashboard vía <script> (JSONP); en
+  // una conexión lenta o inestable eso puede fallar o agotar el tiempo de
+  // espera una vez sin que el backend esté realmente roto. Antes cualquier
+  // falla (timeout, red, respuesta inesperada) se daba por perdida de
+  // inmediato; ahora se reintenta UNA vez automáticamente antes de rendirse,
+  // para que un tropiezo puntual de red no se vea como el dashboard caído.
+  async function callAppsScript(action, extraParams) {
+    const first = await callAppsScriptOnce_(action, extraParams);
+    if (first !== null) return first;
+    console.warn(`[Codigo.gs] action=${action} falló en el primer intento, reintentando una vez...`);
+    return callAppsScriptOnce_(action, extraParams);
   }
 
   async function loadBackendData() {
