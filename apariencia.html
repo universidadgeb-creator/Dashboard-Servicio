@@ -1089,8 +1089,14 @@
     bindEvents();
     initRoleMultiselect(); // [NUEVO] panel desplegable que reemplaza el <select multiple> de Rol
     setupEmptyDashboard();
-    loadData();
-    loadBackendData(); // [NUEVO] (1)(2)(3)(4) — en paralelo, no bloquea la carga principal
+    // [FIX] loadBackendData() ya no se dispara en paralelo con loadData():
+    // ambas competían por el mismo cupo de ejecuciones simultáneas de Apps
+    // Script (ver nota en loadBackendData). Se espera a que termine
+    // loadData() (que ya pinta el dashboard con los datos principales)
+    // antes de pedir los datos del backend — la UI no se ve bloqueada
+    // porque loadData() ya renderiza todo por su cuenta.
+    await loadData();
+    loadBackendData();
   });
 
   function bindEvents() {
@@ -1100,7 +1106,7 @@
       .forEach(id => document.getElementById(id).addEventListener("change", renderComments));
     document.getElementById("avanceMonth").addEventListener("change", renderAvance);
     document.getElementById("avanceClub").addEventListener("change", renderAvance);
-    document.getElementById("refreshTopBtn").addEventListener("click", () => { loadData(); loadBackendData(); });
+    document.getElementById("refreshTopBtn").addEventListener("click", async () => { await loadData(); loadBackendData(); });
     document.getElementById("clearFiltersBtn").addEventListener("click", () => {
       ["filterMonth","filterClub","filterShift","filterCriterion"]
         .forEach(id => document.getElementById(id).value = "Todos");
@@ -1237,12 +1243,18 @@
   }
 
   async function loadBackendData() {
-    const [cumplimiento, metasRol, motivos, resoluciones] = await Promise.all([
-      callAppsScript("cumplimientoMensualSucursal"), // (1)
-      callAppsScript("metasRol"),                    // (2)
-      callAppsScript("motivosGafete"),                // (4)
-      callAppsScript("resoluciones")                  // (3)
-    ]);
+    // [FIX] Antes las 4 llamadas se disparaban en paralelo con Promise.all,
+    // y encima al mismo tiempo que loadData() (formResponses) — 5 ejecuciones
+    // simultáneas contra el mismo Apps Script. Google Apps Script tiene un
+    // límite de ejecuciones concurrentes por script; saturarlo hacía que
+    // todas se volvieran más lentas o fallaran a la vez (se veía como
+    // "backend caído" aunque el servidor estuviera sano, solo saturado).
+    // Ahora se piden una por una: tardan un poco más en total, pero no
+    // compiten entre sí por el mismo cupo de ejecución.
+    const cumplimiento = await callAppsScript("cumplimientoMensualSucursal"); // (1)
+    const metasRol     = await callAppsScript("metasRol");                    // (2)
+    const motivos      = await callAppsScript("motivosGafete");               // (4)
+    const resoluciones = await callAppsScript("resoluciones");                // (3)
 
     if (cumplimiento && cumplimiento.cumplimientoMensualSucursal) {
       caminatasClubData = cumplimiento.cumplimientoMensualSucursal;
