@@ -2166,7 +2166,7 @@
     }
 
     listEl.innerHTML = labels.map((label, i) => `
-      <div class="gafete-motivo-row" title="${escapeHtml('Roles con este motivo:\n' + rolesBreakdownText(label).join('\n'))}">
+      <div class="gafete-motivo-row">
         <span><span class="swatch" style="background:${colors[i%colors.length]}"></span>${escapeHtml(label)}</span>
         <strong>${pcts[i]}% <span style="color:#98a2b3;font-weight:400;">(${values[i]})</span></strong>
       </div>`).join("");
