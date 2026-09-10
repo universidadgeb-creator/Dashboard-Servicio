@@ -102,7 +102,7 @@
 
     .filters{
       display:grid;
-      grid-template-columns:repeat(5,minmax(150px,1fr));
+      grid-template-columns:repeat(4,minmax(150px,1fr));
       gap:14px;
     }
 
@@ -193,6 +193,18 @@
       gap:16px;
     }
 
+    .grid-2{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:16px;
+    }
+
+    .metric-desc{
+      color:var(--gray);
+      font-size:12.5px;
+      line-height:1.4;
+    }
+
     .metric{
       border:1px solid var(--line);
       border-radius:18px;
@@ -275,6 +287,20 @@
       background:white;
     }
 
+    .donut.small{
+      width:72px;
+      height:72px;
+    }
+
+    .donut.small:after{
+      width:52px;
+      height:52px;
+    }
+
+    .donut.small .inside strong{
+      font-size:16px;
+    }
+
     .donut .inside{
       position:relative;
       z-index:1;
@@ -295,6 +321,14 @@
       color:var(--gray);
     }
 
+    .club-logo{
+      display:block;
+      max-height:28px;
+      max-width:110px;
+      object-fit:contain;
+      margin-bottom:6px;
+    }
+
     .club-card h3{
       margin:0 0 7px;
       font-size:17px;
@@ -310,7 +344,7 @@
 
     .chart-wrap{
       position:relative;
-      height:360px;
+      height:390px;
       width:100%;
     }
 
@@ -459,22 +493,46 @@
       font-weight:900;
     }
 
-    .goals{
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-      min-height:38px;
+    .area-cards{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+      gap:16px;
     }
 
-    .goal{
-      border:1px solid rgba(46,125,50,.22);
-      background:#edf8ef;
-      color:#1b5e20;
-      border-radius:999px;
-      padding:8px 12px;
-      font-weight:900;
-      font-size:13px;
+    .area-card{
+      border:1px solid var(--line);
+      border-radius:20px;
+      padding:18px;
+      background:linear-gradient(180deg,#fff 0%,#f9fcfc 100%);
     }
+
+    .area-card-head{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      margin-bottom:12px;
+    }
+
+    .area-card-head h3{
+      margin:0;
+      font-size:15px;
+      font-weight:900;
+      line-height:1.25;
+    }
+
+    .area-card-body p{
+      margin:0 0 6px;
+      font-size:12.5px;
+      line-height:1.4;
+      color:var(--gray);
+    }
+
+    .area-card-body p:last-child{margin-bottom:0}
+
+    .area-card-body strong{color:#101828}
+
+    .area-card-body .hi strong{color:#1b5e20}
+    .area-card-body .lo strong{color:#8a1c1c}
 
     .empty,.loader{
       color:var(--gray);
@@ -699,7 +757,7 @@
     }
 
     @media(max-width:980px){
-      .filters,.grid-3,.club-cards,.criteria-grid,.team-select-row{grid-template-columns:1fr}
+      .filters,.grid-3,.grid-2,.club-cards,.criteria-grid,.team-select-row{grid-template-columns:1fr}
       .team-unlock-grid{grid-template-columns:1fr}
       .topbar{padding:16px;align-items:flex-start}
       .title-block h1{font-size:24px}
@@ -726,17 +784,9 @@
       <div class="section-head">
         <div>
           <h2>Filtros</h2>
-          <p class="note">El dashboard recalcula el resultado general, clubes, gráfica y criterios según la selección.</p>
         </div>
       </div>
       <div class="filters">
-        <div>
-          <label>Vista</label>
-          <select id="vista">
-            <option value="mensual">Mensual</option>
-            <option value="acumulado">Acumulado</option>
-          </select>
-        </div>
         <div>
           <label>Mes</label>
           <select id="mes"></select>
@@ -746,7 +796,7 @@
           <select id="club"></select>
         </div>
         <div>
-          <label>Rol o área <span class="field-hint">(Ctrl/Cmd + clic para elegir varias)</span></label>
+          <label>Área</label>
           <select id="area" multiple size="4"></select>
         </div>
         <div>
@@ -760,7 +810,6 @@
       <div class="section-head">
         <div>
           <h2>Caminatas por club</h2>
-          <p class="note">Caminatas realizadas y % de cumplimiento real (Real/Meta) por sucursal, según la hoja "Caminatas Realizadas".</p>
         </div>
       </div>
       <div id="clubs" class="club-cards"></div>
@@ -770,41 +819,20 @@
       <div class="section-head">
         <div>
           <h2>Resultado general</h2>
-          <p class="note">Promedio de cumplimiento de todos los criterios evaluables visibles por filtro.</p>
         </div>
       </div>
-      <div class="grid-3">
+      <div class="grid-2">
         <div class="metric">
           <span>Resultado general de Ambiente Físico</span>
           <strong id="generalScore">--%</strong>
           <small id="generalCount">Sin registros filtrados</small>
         </div>
         <div class="metric">
-          <span>Estado</span>
-          <strong style="font-size:18px"><span id="generalStatus" class="pill" style="background:#9e9e9e">Sin datos</span></strong>
-        </div>
-        <div class="metric">
           <span>Criterio más bajo</span>
           <strong id="lowestName" style="font-size:22px">--</strong>
           <small id="lowestScore">Sin datos</small>
+          <small id="lowestDesc" class="metric-desc"></small>
         </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="section-head">
-        <div>
-          <h2>Resultado general por mes</h2>
-          <p class="note">Promedio de cumplimiento de cada mes, con el criterio más alto y más bajo. Respeta los filtros de Club, Rol/Área y Turno.</p>
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Mes</th><th>Resultado general</th><th>Criterio más alto</th><th>Criterio más bajo</th></tr>
-          </thead>
-          <tbody id="monthlyResultsBody"></tbody>
-        </table>
       </div>
     </section>
 
@@ -812,7 +840,6 @@
       <div class="section-head">
         <div>
           <h2>Cumplimiento mensual de caminatas</h2>
-          <p class="note">Comparativo de caminatas realizadas por mes y club.</p>
         </div>
       </div>
       <div class="chart-wrap">
@@ -824,7 +851,6 @@
       <div class="section-head">
         <div>
           <h2>Resultados por criterio</h2>
-          <p class="note">Haz clic en cada criterio para revisar sus subcriterios específicos.</p>
         </div>
       </div>
       <div id="criteria" class="criteria-grid"></div>
@@ -833,18 +859,16 @@
     <section class="section">
       <div class="section-head">
         <div>
-          <h2>Áreas / roles que ya lograron la meta</h2>
-          <p class="note">Se muestran únicamente áreas o roles con cumplimiento igual o mayor a 90%.</p>
+          <h2>Resultado por área</h2>
         </div>
       </div>
-      <div id="goals" class="goals"></div>
+      <div id="areaCharts" class="area-cards"></div>
     </section>
 
     <section class="section team-section">
       <div class="section-head">
         <div>
           <h2>Incidencias por equipo</h2>
-          <p class="note">Acceso interno — cada equipo revisa y da seguimiento únicamente a sus propias incidencias detectadas en las caminatas.</p>
         </div>
       </div>
 
@@ -909,6 +933,14 @@ const CLUB_COLORS = {
   "Gourmetería":"#7cd4d2",
   "Valle Real":"#59898c",
   "Center":"#4f5758"
+};
+
+// Logos por club (archivos junto a este HTML).
+const CLUB_LOGOS = {
+  "Naciones Unidas":"Logo Naciones Unidas.png",
+  "Gourmetería":"Logo Gourmetería.png",
+  "Valle Real":"Logo Valle Real.png",
+  "Center":"Logo Center.png"
 };
 
 const CATEGORY_ORDER = ["Mantenimiento","5's","Limpieza en Vestidores","Limpieza General"];
@@ -986,8 +1018,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 function bindFilters(){
-  ["vista","mes","club","area","turno"].forEach(id=>{
+  ["mes","club","area","turno"].forEach(id=>{
     document.getElementById(id).addEventListener("change", render);
+  });
+  enableClickToggleMultiSelect("area");
+}
+
+// [NUEVO] En un <select multiple> nativo, un clic normal reemplaza toda la
+// selección por la opción clicada (hace falta Ctrl/Cmd para sumar o quitar
+// una). Esto interceptamos el clic para que cada opción se seleccione o
+// deseleccione con un solo clic, sin necesitar Ctrl/Cmd.
+function enableClickToggleMultiSelect(id){
+  const el = document.getElementById(id);
+  el.addEventListener("mousedown", e=>{
+    if(e.target.tagName !== "OPTION") return;
+    e.preventDefault();
+    e.target.selected = !e.target.selected;
+    el.dispatchEvent(new Event("change"));
   });
 }
 
@@ -1063,14 +1110,13 @@ function getSelectedValues(id){
 }
 
 function filteredRecords(){
-  const vista = document.getElementById("vista").value;
   const mes = document.getElementById("mes").value;
   const club = document.getElementById("club").value;
   const areas = getSelectedValues("area");
   const turno = document.getElementById("turno").value;
 
   return records.filter(r=>{
-    if(vista === "mensual" && mes && r.mes !== mes) return false;
+    if(mes && r.mes !== mes) return false;
     if(club && r.club !== club) return false;
     if(areas.length && !areas.includes(r.area)) return false;
     if(turno && r.turno !== turno) return false;
@@ -1085,9 +1131,8 @@ function render(){
   renderClubs();
   renderGeneral(agg, data.length);
   renderMonthly();
-  renderMonthlyResults();
   renderCriteria(agg.categories);
-  renderGoals(agg.goals);
+  renderAreaCharts(agg.areas);
 }
 
 function aggregate(data){
@@ -1142,23 +1187,24 @@ function aggregate(data){
       const sub = cat.subcriteria.get(key);
       sub.ok += score;
       sub.eval += 1;
+
+      // Mismo cálculo pero agrupado por Área (para "Resultado por área"):
+      // acumula por categoría dentro de cada área, así se puede sacar el
+      // % general del área y su criterio más alto/más bajo.
+      const areaName = r.area || "Sin área";
+      if(!areaMap.has(areaName)){
+        areaMap.set(areaName, {area:areaName, ok:0, eval:0, categories:new Map()});
+      }
+      const areaEntry = areaMap.get(areaName);
+      areaEntry.ok += score;
+      areaEntry.eval += 1;
+      if(!areaEntry.categories.has(category)){
+        areaEntry.categories.set(category, {name:category, ok:0, eval:0});
+      }
+      const areaCat = areaEntry.categories.get(category);
+      areaCat.ok += score;
+      areaCat.eval += 1;
     });
-
-    const areaKey = (r.club || "Sin club") + "|" + (r.area || "Sin área");
-    if(!areaMap.has(areaKey)){
-      areaMap.set(areaKey, {
-        club:r.club || "Sin club",
-        area:r.area || "Sin área",
-        ok:0,
-        eval:0,
-        caminatas:0
-      });
-    }
-
-    const a = areaMap.get(areaKey);
-    a.ok += Number(r.totalCumplidos || 0);
-    a.eval += Number(r.totalEvaluados || 0);
-    a.caminatas += 1;
   });
 
   const categories = [...categoryMap.values()].map(cat=>{
@@ -1185,96 +1231,52 @@ function aggregate(data){
     ? evaluatedSubcriteria.slice().sort((a,b)=>a.percentage-b.percentage)[0]
     : null;
 
-  const goals = [...areaMap.values()]
-    .map(a=>({...a, percentage:pct(a.ok,a.eval)}))
-    .filter(a=>a.percentage !== null && a.percentage >= 90)
-    .sort((a,b)=>b.percentage-a.percentage);
+  // Resultado por área: % general del área y su criterio (categoría) más
+  // alto y más bajo, para las gráficas circulares de "Resultado por área".
+  const areas = [...areaMap.values()].map(a=>{
+    const percentage = pct(a.ok, a.eval);
+    const cats = [...a.categories.values()]
+      .map(c=>({name:c.name, percentage:pct(c.ok,c.eval)}))
+      .filter(c=>c.percentage !== null);
+    const top = cats.length ? cats.slice().sort((x,y)=>y.percentage-x.percentage)[0] : null;
+    const bottom = cats.length ? cats.slice().sort((x,y)=>x.percentage-y.percentage)[0] : null;
+    return {area:a.area, percentage, top, bottom};
+  })
+    .filter(a=>a.percentage !== null)
+    .sort((a,b)=>b.percentage-a.percentage || a.area.localeCompare(b.area,"es"));
 
   return {
     general:pct(totalOk,totalEval),
     generalStatus:status(pct(totalOk,totalEval)),
     categories,
     lowest,
-    goals
+    areas
   };
-}
-
-function renderMonthlyResults(){
-  const body = document.getElementById("monthlyResultsBody");
-  if(!body) return;
-  body.innerHTML = "";
-
-  // [FIX] Antes recordsForMonth_(mes) recorría TODO el arreglo `records`
-  // una vez POR CADA uno de los 9 meses de MESES_CAMINATAS, reaplicando el
-  // mismo filtro de club/área/turno 9 veces (O(9×N) solo para separar por
-  // mes). Ahora el filtro se aplica una sola vez y se agrupa por mes.
-  const club_ = document.getElementById("club").value;
-  const areas_ = getSelectedValues("area");
-  const turno_ = document.getElementById("turno").value;
-  const byMonth = new Map();
-  records.forEach(r=>{
-    if(club_ && r.club !== club_) return;
-    if(areas_.length && !areas_.includes(r.area)) return;
-    if(turno_ && r.turno !== turno_) return;
-    if(!byMonth.has(r.mes)) byMonth.set(r.mes, []);
-    byMonth.get(r.mes).push(r);
-  });
-
-  MESES_CAMINATAS.forEach(mes=>{
-    const data = byMonth.get(mes) || [];
-    const agg = aggregate(data);
-    const cats = agg.categories.filter(c=>c.percentage !== null);
-
-    const tr = document.createElement("tr");
-    if(!cats.length){
-      tr.innerHTML = `
-        <td>${escapeHtml(mes)}</td>
-        <td>Sin datos</td>
-        <td>--</td>
-        <td>--</td>
-      `;
-      body.appendChild(tr);
-      return;
-    }
-
-    const top = cats.slice().sort((a,b)=>b.percentage-a.percentage)[0];
-    const low = cats.slice().sort((a,b)=>a.percentage-b.percentage)[0];
-
-    tr.innerHTML = `
-      <td>${escapeHtml(mes)}</td>
-      <td>${fmt(agg.general)}</td>
-      <td class="hi">${escapeHtml(top.name)} (${fmt(top.percentage)})</td>
-      <td class="lo">${escapeHtml(low.name)} (${fmt(low.percentage)})</td>
-    `;
-    body.appendChild(tr);
-  });
 }
 
 function renderGeneral(agg,count){
   document.getElementById("generalScore").textContent = fmt(agg.general);
   document.getElementById("generalCount").textContent = count === 1 ? "1 caminata filtrada" : `${count} caminatas filtradas`;
 
-  const s = document.getElementById("generalStatus");
-  s.textContent = agg.generalStatus.text;
-  s.style.background = agg.generalStatus.color;
-
   document.getElementById("lowestName").textContent = agg.lowest ? agg.lowest.name : "--";
   document.getElementById("lowestScore").textContent = agg.lowest ? `${fmt(agg.lowest.percentage)} · ${agg.lowest.category}` : "Sin datos";
+  document.getElementById("lowestDesc").textContent = agg.lowest
+    ? (SUBCRITERION_DESCRIPTIONS[agg.lowest.name] || "")
+    : "";
 }
 
 // [CORREGIDO] Igual que la gráfica mensual: antes esta tarjeta mostraba el
 // número de auditorías capturadas y el % promedio de criterios aprobados,
 // que no es lo mismo que el cumplimiento real de caminatas (Real/Meta). Ahora
 // usa el mismo "caminatasResumen" que viene de la hoja "Caminatas Realizadas",
-// respetando el filtro de Mes (si "Vista" está en "Mensual") y el de Club.
+// respetando el filtro de Mes y el de Club.
 function renderClubs(){
   const wrap = document.getElementById("clubs");
   wrap.innerHTML = "";
 
-  const vista = document.getElementById("vista").value;
   const mesFiltro = document.getElementById("mes").value;
   const clubFiltro = document.getElementById("club").value;
-  const meses = (vista === "mensual" && mesFiltro) ? [mesFiltro] : MESES_CAMINATAS;
+  const meses = mesFiltro ? [mesFiltro] : MESES_CAMINATAS;
 
   CLUBS.forEach(club=>{
     const sinDatos = clubFiltro && clubFiltro !== club;
@@ -1289,19 +1291,20 @@ function renderClubs(){
     const p = pct(real, meta);
     const safe = p === null ? 0 : p;
     const color = CLUB_COLORS[club];
+    const logo = CLUB_LOGOS[club];
 
     const div = document.createElement("div");
     div.className = "club-card";
     div.innerHTML = `
       <div class="donut" style="--value:${safe};--color:${color}">
         <div class="inside">
-          <strong>${real}</strong>
-          <span>caminatas</span>
+          <strong>${fmt(p)}</strong>
         </div>
       </div>
       <div>
+        ${logo ? `<img class="club-logo" src="${encodeURI(logo)}" alt="${escapeHtml(club)}" />` : ""}
         <h3>${escapeHtml(club)}</h3>
-        <p><strong>${fmt(p)}</strong> de cumplimiento real</p>
+        <p><strong>${real}/${meta}</strong> cumplimiento real</p>
       </div>
     `;
     wrap.appendChild(div);
@@ -1343,13 +1346,21 @@ function renderMonthly(){
 
   if(monthlyChart) monthlyChart.destroy();
 
+  // [FIX] El eje Y tenía un tope fijo en 120%. Cuando un club supera esa
+  // meta (real/meta > 120%), la línea llegaba al borde del canvas y se veía
+  // cortada. Ahora el máximo se calcula según el valor más alto presente,
+  // con un margen extra para que la línea y su etiqueta siempre quepan.
+  const allValues = datasets.flatMap(d=>d.data).filter(v=>v !== null && v !== undefined && !isNaN(v));
+  const dataMax = allValues.length ? Math.max(...allValues) : 100;
+  const yMax = Math.max(120, Math.ceil((dataMax + 20) / 10) * 10);
+
   monthlyChart = new Chart(document.getElementById("monthlyChart"),{
     type:"line",
     data:{labels,datasets},
     options:{
       responsive:true,
       maintainAspectRatio:false,
-      layout:{padding:{top:30,right:18,bottom:0,left:0}},
+      layout:{padding:{top:34,right:26,bottom:4,left:6}},
       interaction:{mode:"nearest",intersect:false},
       plugins:{
         legend:{
@@ -1359,7 +1370,7 @@ function renderMonthly(){
         tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`}}
       },
       scales:{
-        y:{min:0,max:120,ticks:{callback:v=>v+"%"},grid:{color:"rgba(16,24,40,.12)"}},
+        y:{min:0,max:yMax,ticks:{callback:v=>v+"%"},grid:{color:"rgba(16,24,40,.12)"}},
         x:{grid:{color:"rgba(16,24,40,.10)"}}
       }
     }
@@ -1426,19 +1437,36 @@ function renderCriteria(categories){
   });
 }
 
-function renderGoals(goals){
-  const wrap = document.getElementById("goals");
+// Gráfica circular por área: % general del área y su criterio (categoría)
+// más alto y más bajo, según los filtros vigentes (Mes, Club, Área, Turno).
+function renderAreaCharts(areas){
+  const wrap = document.getElementById("areaCharts");
   wrap.innerHTML = "";
 
-  if(!goals.length){
-    wrap.innerHTML = `<div class="empty">Todavía no hay áreas o roles con meta lograda en los filtros actuales.</div>`;
+  if(!areas.length){
+    wrap.innerHTML = `<div class="empty">No hay resultados por área con los filtros actuales.</div>`;
     return;
   }
 
-  goals.slice(0,18).forEach(g=>{
+  areas.forEach(a=>{
+    const p = a.percentage;
+    const safe = p === null ? 0 : p;
+    const color = status(p).color;
+
     const div = document.createElement("div");
-    div.className = "goal";
-    div.textContent = `${g.club} · ${g.area} · ${fmt(g.percentage)}`;
+    div.className = "area-card";
+    div.innerHTML = `
+      <div class="area-card-head">
+        <div class="donut small" style="--value:${safe};--color:${color}">
+          <div class="inside"><strong>${fmt(p)}</strong></div>
+        </div>
+        <h3>${escapeHtml(a.area)}</h3>
+      </div>
+      <div class="area-card-body">
+        <p class="hi">▲ Criterio más alto: <strong>${a.top ? escapeHtml(a.top.name) : "--"}</strong>${a.top ? ` (${fmt(a.top.percentage)})` : ""}</p>
+        <p class="lo">▼ Criterio más bajo: <strong>${a.bottom ? escapeHtml(a.bottom.name) : "--"}</strong>${a.bottom ? ` (${fmt(a.bottom.percentage)})` : ""}</p>
+      </div>
+    `;
     wrap.appendChild(div);
   });
 }
