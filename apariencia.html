@@ -743,9 +743,22 @@
     .gafete-modal-body { display:grid; grid-template-columns: 260px 1fr; gap:24px; align-items:center; }
     .gafete-chart-wrap { position:relative; height:260px; }
     .gafete-motivos-list { display:flex; flex-direction:column; gap:8px; }
+    /* [NUEVO] Cada fila es clicable: al dar clic se expande el desglose por
+       rol para ese motivo (ver gafete-motivo-detail). */
     .gafete-motivo-row { display:flex; justify-content:space-between; align-items:center;
-      padding:8px 12px; background:var(--surface-2); border-radius:10px; font-size:13px; }
+      padding:8px 12px; background:var(--surface-2); border-radius:10px; font-size:13px;
+      cursor:pointer; user-select:none; }
+    .gafete-motivo-row:hover { background:#eef4f6; }
     .gafete-motivo-row .swatch { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; }
+    .gafete-motivo-row .chev { color:var(--muted); font-size:11px; transition:transform .15s ease; margin-left:8px; }
+    .gafete-motivo-row.open .chev { transform:rotate(180deg); }
+    .gafete-motivo-detail {
+      display:flex; flex-direction:column; gap:4px;
+      margin:-4px 0 4px; padding:8px 12px 8px 30px;
+      background:var(--surface-2); border-radius:0 0 10px 10px; font-size:12.5px;
+    }
+    .gafete-role-row { display:flex; justify-content:space-between; color:var(--text); }
+    .gafete-role-row strong { color:var(--muted); font-weight:700; }
     @media (max-width: 640px) { .gafete-modal-body { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -1788,42 +1801,34 @@
       return;
     }
 
-    const data = areasConDatos.map(a => calcGeneral(porArea[a]).percent);
+    const data = areasConDatos.map(a => calcGeneral(porArea[a]).percent ?? 0);
     const counts = areasConDatos.map(a => porArea[a].length);
     const colors = areasConDatos.map(a => AREA_COLORS[a] || "#98a2b3");
 
+    // [FIX] Cambiado de barras a dona (pedido explícito): cada porción
+    // representa el % de cumplimiento de esa área, igual estilo que la
+    // dona de "Desglose de motivos — Gafete".
     if (areaChart) areaChart.destroy();
     areaChart = new Chart(ctx, {
-      type: "bar",
+      type: "doughnut",
       data: {
         labels: areasConDatos,
-        datasets: [{
-          label: "Cumplimiento",
-          data,
-          backgroundColor: colors,
-          borderRadius: 8,
-          maxBarThickness: 70
-        }]
+        datasets: [{ data, backgroundColor: colors }]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: {
-          legend: { display: false },
+          legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 8 } },
           datalabels: {
-            anchor: "end", align: "top", color: "#102033",
-            font: { weight: "700", size: 12 },
-            formatter: (v, ctx) => (v===null||v===undefined ? "Sin datos" : v + "%")
+            color: "#fff", font: { weight: "700", size: 11 },
+            formatter: (v) => v + "%"
           },
           tooltip: {
             callbacks: {
-              label: ctx => `${ctx.parsed.y===null?"Sin datos":ctx.parsed.y+"%"} de cumplimiento`,
+              label: ctx => `${ctx.label}: ${ctx.parsed}% de cumplimiento`,
               afterLabel: ctx => `${counts[ctx.dataIndex]} caminatas filtradas`
             }
           }
-        },
-        scales: {
-          y: { min:0, max:100, ticks:{callback:v=>v+"%"}, grid:{color:"#e8eef2"} },
-          x: { grid:{display:false} }
         }
       }
     });
@@ -2131,8 +2136,7 @@
 
     const totals = {};
     // [NUEVO] Desglose por rol de cada motivo: { motivo: { rol: conteo } }.
-    // Permite mostrar, al pasar el cursor sobre un motivo (en la lista o en
-    // la dona), qué roles concentran esas incidencias.
+    // Se muestra al hacer clic en un motivo de la lista (ver más abajo).
     const rolesPorMotivo = {};
     filtered.forEach(m => {
       totals[m.motivo] = (totals[m.motivo]||0) + m.conteo;
@@ -2156,20 +2160,39 @@
     const values = labels.map(k => totals[k]);
     const pcts   = values.map(v => Math.round((v/totalSum)*100));
 
-    // Texto del desglose por rol para un motivo, ordenado de mayor a menor
-    // conteo (usado tanto en el title="" de la lista como en el tooltip
-    // de la dona).
-    function rolesBreakdownText(motivo) {
-      const byRol = rolesPorMotivo[motivo] || {};
-      const entries = Object.entries(byRol).sort((a,b)=>b[1]-a[1]);
-      return entries.length ? entries.map(([rol,cnt]) => `${rol}: ${cnt}`) : ["Sin roles con incidencias para este motivo."];
-    }
-
+    // [FIX] Antes el desglose por rol de un motivo aparecía DOS veces (al
+    // pasar el cursor sobre la fila de la lista y al pasar el cursor sobre
+    // la dona), mostrando lo mismo dos veces. Ahora aparece solo al hacer
+    // clic en la fila de la lista, y sin repetir el nombre del motivo (ya
+    // se ve en la fila misma) — solo la lista de roles y su conteo.
     listEl.innerHTML = labels.map((label, i) => `
-      <div class="gafete-motivo-row">
+      <div class="gafete-motivo-row" data-idx="${i}">
         <span><span class="swatch" style="background:${colors[i%colors.length]}"></span>${escapeHtml(label)}</span>
-        <strong>${pcts[i]}% <span style="color:#98a2b3;font-weight:400;">(${values[i]})</span></strong>
-      </div>`).join("");
+        <span style="display:flex;align-items:center;">
+          <strong>${pcts[i]}% <span style="color:#98a2b3;font-weight:400;">(${values[i]})</span></strong>
+          <span class="chev">▾</span>
+        </span>
+      </div>
+      <div class="gafete-motivo-detail" id="gafeteDetail_${i}" hidden></div>`).join("");
+
+    listEl.querySelectorAll(".gafete-motivo-row").forEach(row => {
+      row.addEventListener("click", () => {
+        const idx = row.getAttribute("data-idx");
+        const detail = document.getElementById("gafeteDetail_" + idx);
+        const wasOpen = !detail.hidden;
+        // Solo un motivo expandido a la vez.
+        listEl.querySelectorAll(".gafete-motivo-detail").forEach(d => d.hidden = true);
+        listEl.querySelectorAll(".gafete-motivo-row").forEach(r => r.classList.remove("open"));
+        if (wasOpen) return; // ya estaba abierto: clic lo cierra
+        const byRol = rolesPorMotivo[labels[idx]] || {};
+        const entries = Object.entries(byRol).sort((a,b)=>b[1]-a[1]);
+        detail.innerHTML = entries.length
+          ? entries.map(([rol,cnt]) => `<div class="gafete-role-row"><span>${escapeHtml(rol)}</span><strong>${cnt}</strong></div>`).join("")
+          : `<div class="gafete-role-row"><span>Sin roles con incidencias para este motivo.</span></div>`;
+        detail.hidden = false;
+        row.classList.add("open");
+      });
+    });
 
     const ctx = document.getElementById("gafeteDonutChart").getContext("2d");
     if (gafeteChart) gafeteChart.destroy();
@@ -2183,13 +2206,7 @@
           datalabels: { color:"#fff", font:{weight:"700",size:11}, formatter:(v)=> Math.round((v/totalSum)*100)+"%" },
           tooltip: {
             callbacks: {
-              label: ctx => `${ctx.label}: ${ctx.parsed} (${Math.round((ctx.parsed/totalSum)*100)}%)`,
-              // [NUEVO] Al pasar el cursor sobre una porción de la dona,
-              // agrega el desglose por rol de ese motivo.
-              afterBody: (items) => {
-                if (!items.length) return [];
-                return ["", "Por rol:", ...rolesBreakdownText(items[0].label)];
-              }
+              label: ctx => `${ctx.label}: ${ctx.parsed} (${Math.round((ctx.parsed/totalSum)*100)}%)`
             }
           }
         }
