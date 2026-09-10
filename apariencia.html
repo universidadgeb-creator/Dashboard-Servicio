@@ -167,6 +167,11 @@
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
+    /* [NUEVO] kpiCards pasó de 3 a 2 tarjetas (se quitó "Estado"). */
+    .grid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     /* [FIX] clubCards muestra un número variable de sucursales (4 con "Center");
        auto-fit evita que la última tarjeta quede sola en una fila aparte y se
        ajusta solo si se agregan/quitan clubes. Antes el div también cargaba la
@@ -659,6 +664,7 @@
         padding: 0 12px 36px;
       }
 
+      .grid-2,
       .grid-3,
       .grid-4,
       .grid-7,
@@ -762,13 +768,12 @@
     <section class="section panel filters-panel">
       <div class="section-head"><div>
         <h2 class="section-title">Filtros</h2>
-        <p class="section-subtitle">La información se recalcula con base en la selección aplicada.</p>
       </div></div>
       <div class="filters-grid">
         <div class="field"><label for="filterMonth">Mes</label><select id="filterMonth"></select></div>
         <div class="field"><label for="filterClub">Club</label><select id="filterClub"></select></div>
         <div class="field">
-          <label for="filterRoleToggle">Rol<span class="field-hint">Clic para elegir uno o varios</span></label>
+          <label for="filterRoleToggle">Rol</label>
           <div class="msel" id="filterRoleMsel">
             <button type="button" class="msel-toggle" id="filterRoleToggle" aria-haspopup="listbox" aria-expanded="false">Todos los roles</button>
             <div class="msel-panel" id="filterRolePanel" role="listbox" aria-multiselectable="true" hidden></div>
@@ -791,7 +796,6 @@
     <section class="section">
       <div class="section-head"><div>
         <h2 class="section-title">Cumplimiento mensual de caminatas por club</h2>
-        <p class="section-subtitle">Porcentaje de cumplimiento según los filtros aplicados.</p>
       </div></div>
       <div id="clubCards" class="grid"></div>
     </section>
@@ -800,7 +804,6 @@
     <section class="section panel">
       <div class="section-head"><div>
         <h2 class="section-title">Cumplimiento mensual</h2>
-        <p class="section-subtitle">Comparativo de cumplimiento por club.</p>
       </div></div>
       <div class="chart-wrap"><canvas id="monthlyChart"></canvas></div>
     </section>
@@ -809,16 +812,14 @@
     <section class="section">
       <div class="section-head"><div>
         <h2 class="section-title">Resultado de Política de Apariencia</h2>
-        <p class="section-subtitle">Lectura general de cumplimiento de acuerdo con los filtros seleccionados.</p>
       </div></div>
-      <div id="kpiCards" class="grid grid-3"></div>
+      <div id="kpiCards" class="grid grid-2"></div>
     </section>
 
     <!-- [NUEVO] RESULTADO MENSUAL COMPARATIVO -->
     <section class="section panel">
       <div class="section-head"><div>
         <h2 class="section-title">Resultado mensual comparativo</h2>
-        <p class="section-subtitle">Promedio de cumplimiento de Política de Apariencia por mes y club. Pasa el cursor sobre un punto para ver el criterio más alto y más bajo de ese mes.</p>
       </div></div>
       <div class="chart-wrap"><canvas id="resultsMonthlyChart"></canvas></div>
     </section>
@@ -827,16 +828,22 @@
     <section class="section">
       <div class="section-head"><div>
         <h2 class="section-title">Resultados por criterio</h2>
-        <p class="section-subtitle">Cada criterio muestra su porcentaje, descripción y estado visual.</p>
       </div></div>
       <div id="criteriaCards" class="grid grid-7"></div>
+    </section>
+
+    <!-- [NUEVO] RESULTADOS POR ÁREA -->
+    <section class="section panel">
+      <div class="section-head"><div>
+        <h2 class="section-title">Resultados por área</h2>
+      </div></div>
+      <div class="chart-wrap"><canvas id="areaChart"></canvas></div>
     </section>
 
     <!-- AVANCE CAMINATAS POR ROL -->
     <section class="section panel">
       <div class="section-head"><div>
         <h2 class="section-title">Avance de caminatas por rol</h2>
-        <p class="section-subtitle">Comparativo de caminatas realizadas vs meta mensual por rol y club.</p>
       </div></div>
       <div class="filters-grid" style="margin-bottom:16px;">
         <div class="field"><label for="avanceMonth">Mes</label><select id="avanceMonth"></select></div>
@@ -849,7 +856,6 @@
     <section class="section panel comments-panel">
       <div class="section-head"><div>
         <h2 class="section-title">Capital Humano | Comentarios relevantes</h2>
-        <p class="section-subtitle">Acceso interno — seguimiento y resolución de comentarios accionables.</p>
       </div></div>
 
       <div id="unlockBox" class="unlock-grid">
@@ -891,10 +897,6 @@
         <h3>Desglose de motivos — Gafete</h3>
         <button type="button" id="gafeteModalClose" onclick="closeGafeteModal()">✕</button>
       </div>
-      <p class="section-subtitle" style="margin:0 0 14px;">
-        Distribución de motivos de falla, calculada sobre la selección de filtros globales
-        (Mes, Sucursal, Rol, Turno) vigente en el dashboard.
-      </p>
       <div class="gafete-modal-body">
         <div class="gafete-chart-wrap"><canvas id="gafeteDonutChart"></canvas></div>
         <div id="gafeteMotivosList" class="gafete-motivos-list"></div>
@@ -1030,6 +1032,36 @@
   let motivosGafeteData = []; // [{club, mes, turno, motivo, conteo}, ...]
   let gafeteChart = null;
 
+  // [NUEVO] Agrupación de roles por área, para la gráfica "Resultados por
+  // área". Mapeo dado directamente por Capital Humano.
+  const AREA_POR_ROL = {
+    "Ejecutivo": "Administración",
+    "Caja": "Administración",
+    "Recepción": "Administración",
+    "Kids": "Administración",
+    "Lider": "Administración", // [PENDIENTE] confirmar área correcta
+    "Caja estacionamiento": "Orden y Limpieza",
+    "Vestidores / técnico de Orden y Limpieza": "Orden y Limpieza",
+    "Concierge vestidores": "Orden y Limpieza",
+    "Coach deportivo": "Deportes",
+    "Nutrición": "Deportes",
+    "Mobility": "Deportes",
+    "Estiramiento": "Deportes",
+    "Recepción Acuática": "Acuática",
+    "Instructor Acuática": "Acuática",
+    "Relaciones Públicas": "Comercial"
+  };
+  const AREA_ORDEN = ["Administración", "Deportes", "Acuática", "Orden y Limpieza", "Comercial"];
+  const AREA_COLORS = {
+    "Administración": "#007882",
+    "Deportes": "#13a56b",
+    "Acuática": "#59898c",
+    "Orden y Limpieza": "#d99a16",
+    "Comercial": "#c94032"
+  };
+  function getArea(rol) { return AREA_POR_ROL[rol] || "Sin área"; }
+  let areaChart = null;
+
   // [FIX 2026-07-02] loadData() (gviz) y loadBackendData() (Apps Script) corren
   // en paralelo. Si el backend responde antes de que "respuestas" esté lista,
   // se guarda aquí para reintentar el merge en cuanto gviz termine, sin
@@ -1133,7 +1165,10 @@
     fillSelect("filterClub",      ["Todos",...CLUBS],  "Todos");
     fillMultiSelect("filterRole", []);
     fillSelect("filterShift",     ["Todos"],            "Todos");
-    fillSelect("filterCriterion", ["Todos",...CRITERIA.map(c=>c.name)], "Todos");
+    // [FIX] Gafete ya no es una opción de filtro: su detalle propio se ve en
+    // el panel "Desglose de motivos — Gafete" (clic en su tarjeta), así que
+    // se excluye de este selector para no duplicar el camino de acceso.
+    fillSelect("filterCriterion", ["Todos",...CRITERIA.filter(c=>c.name!=="Gafete").map(c=>c.name)], "Todos");
     fillSelect("commentClub",     ["Todos",...CLUBS],  "Todos");
     fillSelect("commentMonth",    ["Todos",...MONTHS], "Todos");
     fillSelect("commentRole",     ["Todos"],            "Todos");
@@ -1582,7 +1617,7 @@
     keepOrFill("filterClub",     ["Todos",...CLUBS]);
     keepOrFillMulti("filterRole", unique(respuestas.map(d=>d.rol)).sort());
     keepOrFill("filterShift",    ["Todos",...unique(respuestas.map(d=>d.turno)).sort()]);
-    keepOrFill("filterCriterion",["Todos",...CRITERIA.map(c=>c.name)]);
+    keepOrFill("filterCriterion",["Todos",...CRITERIA.filter(c=>c.name!=="Gafete").map(c=>c.name)]);
     keepOrFill("commentClub",    ["Todos",...CLUBS]);
     keepOrFill("commentMonth",   ["Todos",...MONTHS]);
     const comRows = respuestas.filter(r=>isRelevantComment(r.comentarios));
@@ -1723,9 +1758,75 @@
     renderKpis(filtered);
     renderResultsMonthlyChart(); // [NUEVO] Resultado mensual comparativo
     renderCriteriaCards(filtered);
+    renderAreaChart(filtered); // [NUEVO] Resultados por área
     renderComments();
     // [NUEVO] (4) si el panel de Gafete está abierto, se actualiza con los filtros vigentes
     if (isGafeteModalOpen()) renderGafeteDonut();
+  }
+
+  // [NUEVO] Cumplimiento general (mismo cálculo que calcGeneral) agrupado
+  // por área (Administración/Deportes/Acuática/Orden y Limpieza/Comercial),
+  // usando el mapeo AREA_POR_ROL sobre el rol de cada respuesta. Respeta los
+  // mismos filtros globales que el resto del dashboard (incluido Rol: si
+  // se filtra por un rol puntual, solo su área correspondiente tendrá datos).
+  function renderAreaChart(filtered) {
+    const canvas = document.getElementById("areaChart");
+    if (!canvas) return;
+
+    const porArea = {};
+    filtered.forEach(r => {
+      const area = getArea(r.rol);
+      if (!porArea[area]) porArea[area] = [];
+      porArea[area].push(r);
+    });
+
+    const areasConDatos = AREA_ORDEN.filter(a => porArea[a] && porArea[a].length);
+    const ctx = canvas.getContext("2d");
+
+    if (!areasConDatos.length) {
+      if (areaChart) { areaChart.destroy(); areaChart = null; }
+      return;
+    }
+
+    const data = areasConDatos.map(a => calcGeneral(porArea[a]).percent);
+    const counts = areasConDatos.map(a => porArea[a].length);
+    const colors = areasConDatos.map(a => AREA_COLORS[a] || "#98a2b3");
+
+    if (areaChart) areaChart.destroy();
+    areaChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: areasConDatos,
+        datasets: [{
+          label: "Cumplimiento",
+          data,
+          backgroundColor: colors,
+          borderRadius: 8,
+          maxBarThickness: 70
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          datalabels: {
+            anchor: "end", align: "top", color: "#102033",
+            font: { weight: "700", size: 12 },
+            formatter: (v, ctx) => (v===null||v===undefined ? "Sin datos" : v + "%")
+          },
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.parsed.y===null?"Sin datos":ctx.parsed.y+"%"} de cumplimiento`,
+              afterLabel: ctx => `${counts[ctx.dataIndex]} caminatas filtradas`
+            }
+          }
+        },
+        scales: {
+          y: { min:0, max:100, ticks:{callback:v=>v+"%"}, grid:{color:"#e8eef2"} },
+          x: { grid:{display:false} }
+        }
+      }
+    });
   }
 
   function getFilteredData() {
@@ -1941,18 +2042,15 @@
     const c   = document.getElementById("kpiCards");
     const gen = calcGeneral(filtered);
     const pct = gen.percent;
-    const st  = pct===null?"Sin datos":getState(pct,filtered.length);
     const low = getLowestCriterion(filtered);
+    // [FIX] Se quitó la tarjeta "Estado" (Excelente/En seguimiento/Requiere
+    // atención) a pedido; solo quedan Cumplimiento general y Criterio más
+    // bajo. getState() ya no se usa aquí.
     c.innerHTML = `
       <article class="kpi-card">
         <h3>Cumplimiento general</h3>
         <p class="kpi-value">${pct===null?"0":pct}%</p>
         <p class="kpi-note">${filtered.length} caminatas filtradas</p>
-      </article>
-      <article class="kpi-card">
-        <h3>Estado</h3>
-        <p class="kpi-value" style="font-size:30px;">${st}</p>
-        <p class="kpi-note">Resultado de la selección actual.</p>
       </article>
       <article class="kpi-card">
         <h3>Criterio más bajo</h3>
@@ -2032,7 +2130,17 @@
     );
 
     const totals = {};
-    filtered.forEach(m => { totals[m.motivo] = (totals[m.motivo]||0) + m.conteo; });
+    // [NUEVO] Desglose por rol de cada motivo: { motivo: { rol: conteo } }.
+    // Permite mostrar, al pasar el cursor sobre un motivo (en la lista o en
+    // la dona), qué roles concentran esas incidencias.
+    const rolesPorMotivo = {};
+    filtered.forEach(m => {
+      totals[m.motivo] = (totals[m.motivo]||0) + m.conteo;
+      if (m.conteo > 0) {
+        if (!rolesPorMotivo[m.motivo]) rolesPorMotivo[m.motivo] = {};
+        rolesPorMotivo[m.motivo][m.rol] = (rolesPorMotivo[m.motivo][m.rol]||0) + m.conteo;
+      }
+    });
     const totalSum = Object.values(totals).reduce((a,b)=>a+b, 0);
 
     const listEl = document.getElementById("gafeteMotivosList");
@@ -2048,8 +2156,17 @@
     const values = labels.map(k => totals[k]);
     const pcts   = values.map(v => Math.round((v/totalSum)*100));
 
+    // Texto del desglose por rol para un motivo, ordenado de mayor a menor
+    // conteo (usado tanto en el title="" de la lista como en el tooltip
+    // de la dona).
+    function rolesBreakdownText(motivo) {
+      const byRol = rolesPorMotivo[motivo] || {};
+      const entries = Object.entries(byRol).sort((a,b)=>b[1]-a[1]);
+      return entries.length ? entries.map(([rol,cnt]) => `${rol}: ${cnt}`) : ["Sin roles con incidencias para este motivo."];
+    }
+
     listEl.innerHTML = labels.map((label, i) => `
-      <div class="gafete-motivo-row">
+      <div class="gafete-motivo-row" title="${escapeHtml('Roles con este motivo:\n' + rolesBreakdownText(label).join('\n'))}">
         <span><span class="swatch" style="background:${colors[i%colors.length]}"></span>${escapeHtml(label)}</span>
         <strong>${pcts[i]}% <span style="color:#98a2b3;font-weight:400;">(${values[i]})</span></strong>
       </div>`).join("");
@@ -2064,7 +2181,17 @@
         plugins: {
           legend: { display:false },
           datalabels: { color:"#fff", font:{weight:"700",size:11}, formatter:(v)=> Math.round((v/totalSum)*100)+"%" },
-          tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed} (${Math.round((ctx.parsed/totalSum)*100)}%)` } }
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.label}: ${ctx.parsed} (${Math.round((ctx.parsed/totalSum)*100)}%)`,
+              // [NUEVO] Al pasar el cursor sobre una porción de la dona,
+              // agrega el desglose por rol de ese motivo.
+              afterBody: (items) => {
+                if (!items.length) return [];
+                return ["", "Por rol:", ...rolesBreakdownText(items[0].label)];
+              }
+            }
+          }
         }
       }
     });
