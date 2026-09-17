@@ -1124,10 +1124,18 @@
       localStorage.setItem(HIDDEN_STORAGE_KEY, JSON.stringify(hiddenComments));
     } catch(e) { console.error("Error guardando comentarios ocultos:", e); }
   }
-  function hideComment(id) {
+  // [FIX] Antes "Ocultar de la vista" solo se guardaba en localStorage
+  // (comentario del propio código: "solo local, no se persiste en Excel"),
+  // así que cada computadora tenía su propio conjunto de comentarios
+  // ocultos y el conteo de incidencias no coincidía entre computadoras.
+  // Ahora también se guarda en el backend (misma hoja de seguimiento que ya
+  // usan las resoluciones), para que ocultar un comentario se refleje en
+  // todas las computadoras.
+  function hideComment(id, gvizRowIndex) {
     hiddenComments[id] = true;
     saveHiddenComments();
     renderComments();
+    persistirOculto_(gvizRowIndex, true);
   }
 
   // ─── INIT ────────────────────────────────────────────────────────────────────
@@ -1383,8 +1391,13 @@
         tipo: (res && res.tipo) || "",
         nota: (res && res.nota) || ""
       };
+      // [NUEVO] Igual que "resolved", "oculto" ahora manda desde el backend
+      // (compartido entre computadoras) en vez de depender solo de lo que
+      // esta computadora tenga guardado en su propio localStorage.
+      hiddenComments[r.commentId] = !!(res && res.oculto);
     });
     saveCommentStates();
+    saveHiddenComments();
   }
 
   // ─── PARSEO GVIZ ─────────────────────────────────────────────────────────────
@@ -2458,7 +2471,7 @@
                 onchange="setNotaCH('${r.commentId}', '${r.gvizRowIndex}', this.value)">${escapeHtml(notaCH)}</textarea>
             </div>
             ${daysHtml}
-            <button type="button" class="hide-comment-btn" onclick="hideComment('${r.commentId}')"
+            <button type="button" class="hide-comment-btn" onclick="hideComment('${r.commentId}', '${r.gvizRowIndex}')"
               style="margin-left:auto;background:none;border:1px solid #c5d4de;border-radius:6px;
               padding:4px 10px;font-size:12px;color:#5a7080;cursor:pointer;">
               Ocultar de la vista
@@ -2617,6 +2630,21 @@
     });
     if (!result) {
       showToast("No se pudo guardar en el Excel (revisa la URL del backend). Se guardó localmente.");
+    }
+  }
+
+  // [NUEVO] Guarda "Ocultar de la vista" en el backend (acción "hideComment"
+  // de Codigo.gs), en la misma hoja de seguimiento que las resoluciones, así
+  // se comparte entre todas las computadoras en vez de quedar solo en el
+  // localStorage de quien le dio clic.
+  async function persistirOculto_(gvizRowIndex, oculto) {
+    if (gvizRowIndex === undefined || gvizRowIndex === null || gvizRowIndex === "undefined") return;
+    const result = await callAppsScript("hideComment", {
+      row: gvizRowIndex,
+      oculto: oculto ? "true" : "false"
+    });
+    if (!result) {
+      showToast("No se pudo guardar en el Excel que este comentario está oculto (revisa la URL del backend). Se ocultó solo en esta computadora.");
     }
   }
 
