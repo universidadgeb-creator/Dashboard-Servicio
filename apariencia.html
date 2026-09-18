@@ -182,6 +182,11 @@
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     }
 
+    /* [NUEVO] Igual criterio que #clubCards: número variable de áreas. */
+    #areaCards {
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
     .grid-4 {
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
@@ -849,11 +854,11 @@
     </section>
 
     <!-- [NUEVO] RESULTADOS POR ÁREA -->
-    <section class="section panel">
+    <section class="section">
       <div class="section-head"><div>
         <h2 class="section-title">Resultados por área</h2>
       </div></div>
-      <div class="chart-wrap"><canvas id="areaChart"></canvas></div>
+      <div id="areaCards" class="grid"></div>
     </section>
 
     <!-- AVANCE CAMINATAS POR ROL -->
@@ -1076,7 +1081,6 @@
     "Comercial": "#c94032"
   };
   function getArea(rol) { return AREA_POR_ROL[rol] || "Sin área"; }
-  let areaChart = null;
 
   // [FIX 2026-07-02] loadData() (gviz) y loadBackendData() (Apps Script) corren
   // en paralelo. Si el backend responde antes de que "respuestas" esté lista,
@@ -1787,20 +1791,33 @@
     renderKpis(filtered);
     renderResultsMonthlyChart(); // [NUEVO] Resultado mensual comparativo
     renderCriteriaCards(filtered);
-    renderAreaChart(filtered); // [NUEVO] Resultados por área
+    renderAreaCards(filtered); // [NUEVO] Resultados por área
     renderComments();
     // [NUEVO] (4) si el panel de Gafete está abierto, se actualiza con los filtros vigentes
     if (isGafeteModalOpen()) renderGafeteDonut();
   }
 
-  // [NUEVO] Cumplimiento general (mismo cálculo que calcGeneral) agrupado
-  // por área (Administración/Deportes/Acuática/Orden y Limpieza/Comercial),
-  // usando el mapeo AREA_POR_ROL sobre el rol de cada respuesta. Respeta los
-  // mismos filtros globales que el resto del dashboard (incluido Rol: si
-  // se filtra por un rol puntual, solo su área correspondiente tendrá datos).
-  function renderAreaChart(filtered) {
-    const canvas = document.getElementById("areaChart");
-    if (!canvas) return;
+  // [FIX] Igual que getLowestCriterion, pero devuelve el más alto Y el más
+  // bajo en una sola pasada (se usa en las tarjetas de "Resultados por
+  // área" para mostrar ambos).
+  function getHighLowCriterion(rows) {
+    if (!rows.length) return { top: null, bottom: null };
+    const r = CRITERIA.map(c => ({ name: c.name, percent: calcCriterion(rows, c.key).percent }))
+                      .filter(c => c.percent !== null);
+    if (!r.length) return { top: null, bottom: null };
+    r.sort((a, b) => a.percent - b.percent);
+    return { bottom: r[0], top: r[r.length - 1] };
+  }
+
+  // [FIX] Antes era una sola dona con las 5 áreas como porciones (útil para
+  // ver proporciones, pero no para leer de un vistazo la calificación de
+  // cada área). Ahora, a pedido, es una tarjeta individual por área — mismo
+  // estilo "ejecutivo y limpio" que las tarjetas de club: dona-gauge con el
+  // % en el centro, y debajo el criterio más alto y más bajo de esa área.
+  function renderAreaCards(filtered) {
+    const c = document.getElementById("areaCards");
+    if (!c) return;
+    c.innerHTML = "";
 
     const porArea = {};
     filtered.forEach(r => {
@@ -1810,43 +1827,29 @@
     });
 
     const areasConDatos = AREA_ORDEN.filter(a => porArea[a] && porArea[a].length);
-    const ctx = canvas.getContext("2d");
-
     if (!areasConDatos.length) {
-      if (areaChart) { areaChart.destroy(); areaChart = null; }
+      c.innerHTML = `<div class="empty" style="grid-column:1/-1;">Sin datos de áreas para los filtros seleccionados.</div>`;
       return;
     }
 
-    const data = areasConDatos.map(a => calcGeneral(porArea[a]).percent ?? 0);
-    const counts = areasConDatos.map(a => porArea[a].length);
-    const colors = areasConDatos.map(a => AREA_COLORS[a] || "#98a2b3");
+    areasConDatos.forEach(area => {
+      const rows = porArea[area];
+      const pct  = calcGeneral(rows).percent ?? 0;
+      const col  = AREA_COLORS[area] || "#98a2b3";
+      const deg  = Math.min(pct, 100) * 3.6;
+      const { top, bottom } = getHighLowCriterion(rows);
 
-    // [FIX] Cambiado de barras a dona (pedido explícito): cada porción
-    // representa el % de cumplimiento de esa área, igual estilo que la
-    // dona de "Desglose de motivos — Gafete".
-    if (areaChart) areaChart.destroy();
-    areaChart = new Chart(ctx, {
-      type: "doughnut",
-      data: {
-        labels: areasConDatos,
-        datasets: [{ data, backgroundColor: colors }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 8 } },
-          datalabels: {
-            color: "#fff", font: { weight: "700", size: 11 },
-            formatter: (v) => v + "%"
-          },
-          tooltip: {
-            callbacks: {
-              label: ctx => `${ctx.label}: ${ctx.parsed}% de cumplimiento`,
-              afterLabel: ctx => `${counts[ctx.dataIndex]} caminatas filtradas`
-            }
-          }
-        }
-      }
+      const card = document.createElement("article");
+      card.className = "club-card";
+      card.innerHTML = `
+        <div class="donut" style="background:radial-gradient(circle at center,#fff 0 62%,transparent 63%),
+          conic-gradient(${col} 0deg,${col} ${deg}deg,#e8eef2 ${deg}deg 360deg);">
+          <strong>${pct}%</strong>
+        </div>
+        <h3>${escapeHtml(area)}</h3>
+        <p class="club-meta">Más alto: <strong>${top ? escapeHtml(top.name) + " (" + top.percent + "%)" : "Sin datos"}</strong></p>
+        <p class="club-meta">Más bajo: <strong>${bottom ? escapeHtml(bottom.name) + " (" + bottom.percent + "%)" : "Sin datos"}</strong></p>`;
+      c.appendChild(card);
     });
   }
 
