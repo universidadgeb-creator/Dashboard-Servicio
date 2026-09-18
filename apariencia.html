@@ -212,22 +212,26 @@
       min-height: 180px;
     }
 
+    /* [FIX] A pedido: anillo más grueso (50%/51% en vez de 62%/63% deja
+       más espacio para el color), tamaño un poco más chico (108px en vez
+       de 128px) y número central más pequeño — se ve más "ejecutivo",
+       menos como una dona delgada. */
     .donut {
-      width: 128px;
-      height: 128px;
+      width: 108px;
+      height: 108px;
       border-radius: 50%;
       display: grid;
       place-items: center;
       background:
-        radial-gradient(circle at center, #fff 0 62%, transparent 63%),
+        radial-gradient(circle at center, #fff 0 50%, transparent 51%),
         conic-gradient(var(--gray) 0deg, var(--gray) 0deg, #e8eef2 0deg 360deg);
       box-shadow: inset 0 0 0 1px rgba(16, 32, 51, 0.04);
     }
 
     .donut strong {
-      font-size: 28px;
+      font-size: 20px;
       font-weight: 800;
-      letter-spacing: -0.6px;
+      letter-spacing: -0.4px;
     }
 
     .club-card h3 {
@@ -1835,14 +1839,17 @@
     areasConDatos.forEach(area => {
       const rows = porArea[area];
       const pct  = calcGeneral(rows).percent ?? 0;
-      const col  = AREA_COLORS[area] || "#98a2b3";
+      // [FIX] Antes el color del anillo era un color fijo por área (una
+      // paleta decorativa); ahora refleja el desempeño real, igual criterio
+      // que las tarjetas de club: rojo/amarillo/verde según el %.
+      const col  = stateColor(getState(pct, rows.length));
       const deg  = Math.min(pct, 100) * 3.6;
       const { top, bottom } = getHighLowCriterion(rows);
 
       const card = document.createElement("article");
       card.className = "club-card";
       card.innerHTML = `
-        <div class="donut" style="background:radial-gradient(circle at center,#fff 0 62%,transparent 63%),
+        <div class="donut" style="background:radial-gradient(circle at center,#fff 0 50%,transparent 51%),
           conic-gradient(${col} 0deg,${col} ${deg}deg,#e8eef2 ${deg}deg 360deg);">
           <strong>${pct}%</strong>
         </div>
@@ -1912,7 +1919,7 @@
       // Excelente/En seguimiento/Requiere atención/Sin datos aparte). El
       // color de la dona sigue reflejando el estado (verde/amarillo/rojo).
       card.innerHTML = `
-        <div class="donut" style="background:radial-gradient(circle at center,#fff 0 62%,transparent 63%),
+        <div class="donut" style="background:radial-gradient(circle at center,#fff 0 50%,transparent 51%),
           conic-gradient(${col} 0deg,${col} ${deg}deg,#e8eef2 ${deg}deg 360deg);">
           <strong>${pct}%</strong>
         </div>
