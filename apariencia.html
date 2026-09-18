@@ -42,14 +42,17 @@
       color: var(--text);
     }
 
+    /* [FIX] A pedido: encabezado más chico (menos espacio desperdiciado
+       ahora que ya no tiene el botón "Actualizar datos") y color más claro
+       y suave — antes era un degradado muy oscuro y saturado. */
     .hero {
       background:
-        linear-gradient(135deg, rgba(0, 120, 130, 0.96), rgba(6, 81, 81, 0.98)),
+        linear-gradient(135deg, rgba(18, 143, 153, 0.92), rgba(15, 112, 112, 0.92)),
         radial-gradient(circle at top right, rgba(158, 225, 225, 0.35), transparent 34%);
       color: white;
-      padding: 28px 24px 42px;
-      border-bottom-left-radius: 34px;
-      border-bottom-right-radius: 34px;
+      padding: 18px 24px 24px;
+      border-bottom-left-radius: 28px;
+      border-bottom-right-radius: 28px;
       box-shadow: var(--shadow);
     }
 
@@ -65,15 +68,15 @@
     }
 
     .logo-box {
-      width: 112px;
-      height: 112px;
-      border-radius: 24px;
+      width: 76px;
+      height: 76px;
+      border-radius: 18px;
       background: rgba(255, 255, 255, 0.12);
       border: 1px solid rgba(255, 255, 255, 0.24);
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 12px;
+      padding: 9px;
       backdrop-filter: blur(8px);
     }
 
@@ -89,8 +92,8 @@
     }
 
     .eyebrow {
-      margin: 0 0 10px;
-      font-size: 13px;
+      margin: 0 0 6px;
+      font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 1.8px;
       color: rgba(255, 255, 255, 0.76);
@@ -99,16 +102,16 @@
 
     .hero h1 {
       margin: 0;
-      font-size: clamp(30px, 4.6vw, 50px);
+      font-size: clamp(24px, 3.4vw, 36px);
       line-height: 1;
       letter-spacing: -1.1px;
     }
 
     .hero p {
-      margin: 12px 0 0;
+      margin: 6px 0 0;
       max-width: 760px;
-      font-size: 16px;
-      line-height: 1.55;
+      font-size: 14px;
+      line-height: 1.4;
       color: rgba(255, 255, 255, 0.88);
     }
 
@@ -657,9 +660,9 @@
 
     @media (max-width: 700px) {
       .hero {
-        padding: 22px 16px 36px;
-        border-bottom-left-radius: 24px;
-        border-bottom-right-radius: 24px;
+        padding: 16px 16px 22px;
+        border-bottom-left-radius: 20px;
+        border-bottom-right-radius: 20px;
       }
 
       .hero-inner {
@@ -667,8 +670,8 @@
       }
 
       .logo-box {
-        width: 96px;
-        height: 96px;
+        width: 64px;
+        height: 64px;
       }
 
       .page {
