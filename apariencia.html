@@ -1118,11 +1118,18 @@
 
   // Devuelve las metas por rol de un club: usa datos dinámicos del backend si
   // ya llegaron, si no, cae de vuelta al respaldo estático.
+  // [FIX] El rol "Caja" se eliminó del dashboard, pero la pestaña "Plantilla
+  // y Meta" del Sheet lo sigue trayendo con su meta original, así que el
+  // cuadro de avance por rol lo volvía a mostrar. Se quita aquí explícitamente
+  // (sin importar si viene del backend dinámico o del respaldo), para no
+  // depender de editar el Sheet.
   function getMetaRolPara(club) {
-    if (metasRolData && metasRolData[club] && Object.keys(metasRolData[club]).length) {
-      return metasRolData[club];
-    }
-    return META_FALLBACK[club] || {};
+    const raw = (metasRolData && metasRolData[club] && Object.keys(metasRolData[club]).length)
+      ? metasRolData[club]
+      : (META_FALLBACK[club] || {});
+    if (!("Caja" in raw)) return raw;
+    const { "Caja": _omitida, ...resto } = raw;
+    return resto;
   }
 
   Chart.register(ChartDataLabels);
