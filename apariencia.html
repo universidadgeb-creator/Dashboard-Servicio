@@ -964,21 +964,21 @@
   // (ver getMetaRolPara() más abajo).
   const META_FALLBACK = {
     "Naciones Unidas": {
-      "Caja": 2, "Caja estacionamiento": 2, "Coach deportivo": 8,
+      "Caja estacionamiento": 2, "Coach deportivo": 8,
       "Concierge vestidores": 3, "Ejecutivo": 3, "Estiramiento": 4,
       "Instructor Acuática": 9, "Kids": 4, "Mobility": 2,
       "Nutrición": 2, "Recepción": 2, "Recepción Acuática": 2,
       "Vestidores / técnico de Orden y Limpieza": 15
     },
     "Gourmetería": {
-      "Caja": 2, "Caja estacionamiento": 0, "Coach deportivo": 7,
+      "Caja estacionamiento": 0, "Coach deportivo": 7,
       "Concierge vestidores": 2, "Ejecutivo": 2, "Estiramiento": 5,
       "Instructor Acuática": 0, "Kids": 2, "Mobility": 1,
       "Nutrición": 2, "Recepción": 0, "Recepción Acuática": 0,
       "Vestidores / técnico de Orden y Limpieza": 9
     },
     "Valle Real": {
-      "Caja": 1, "Caja estacionamiento": 0, "Coach deportivo": 8,
+      "Caja estacionamiento": 0, "Coach deportivo": 8,
       "Concierge vestidores": 2, "Ejecutivo": 2, "Estiramiento": 3,
       "Instructor Acuática": 0, "Kids": 3, "Mobility": 2,
       "Nutrición": 2, "Recepción": 0, "Recepción Acuática": 0,
@@ -1086,7 +1086,6 @@
   // área". Mapeo dado directamente por Capital Humano.
   const AREA_POR_ROL = {
     "Ejecutivo": "Administración",
-    "Caja": "Administración",
     "Recepción": "Administración",
     "Kids": "Administración",
     "Lider": "Administración", // [PENDIENTE] confirmar área correcta
@@ -1576,6 +1575,10 @@
       const turno      = normalizeShift(getFirst(idx.turnoCols));
       const mes        = normalizeMonth(get(idx.mes));
       if (!mes) { droppedNoMes++; continue; }
+
+      // [NUEVO] Se eliminó el rol "Caja" del dashboard (a petición de CH).
+      // Comparación exacta para no afectar "Caja estacionamiento".
+      if (rol === "Caja") { continue; }
 
       // [MODIFICADO 2026-07-02] La clasificación (col R: Gafete/Uniforme/...) ya
       // NO se mezcla con el texto del comentario — se guarda aparte
