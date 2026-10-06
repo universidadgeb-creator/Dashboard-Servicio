@@ -796,7 +796,14 @@
         <h2 class="section-title">Filtros</h2>
       </div></div>
       <div class="filters-grid">
-        <div class="field"><label for="filterMonth">Mes</label><select id="filterMonth"></select></div>
+        <div class="field">
+          <label for="filterMonthToggle">Mes</label>
+          <div class="msel" id="filterMonthMsel">
+            <button type="button" class="msel-toggle" id="filterMonthToggle" aria-haspopup="listbox" aria-expanded="false">Todos los meses</button>
+            <div class="msel-panel" id="filterMonthPanel" role="listbox" aria-multiselectable="true" hidden></div>
+          </div>
+          <select id="filterMonth" multiple hidden></select>
+        </div>
         <!-- [FIX] Club ahora permite elegir varias sucursales a la vez, mismo
              patrón (botón + panel de checkboxes) que ya usa Rol. -->
         <div class="field">
@@ -921,7 +928,14 @@
             </div>
             <select id="commentClub" multiple hidden></select>
           </div>
-          <div class="field"><label for="commentMonth">Mes</label><select id="commentMonth"></select></div>
+          <div class="field">
+            <label for="commentMonthToggle">Mes</label>
+            <div class="msel" id="commentMonthMsel">
+              <button type="button" class="msel-toggle" id="commentMonthToggle" aria-haspopup="listbox" aria-expanded="false">Todos los meses</button>
+              <div class="msel-panel" id="commentMonthPanel" role="listbox" aria-multiselectable="true" hidden></div>
+            </div>
+            <select id="commentMonth" multiple hidden></select>
+          </div>
           <div class="field"><label for="commentRole">Rol</label><select id="commentRole"></select></div>
           <div class="field"><label for="commentShift">Turno</label><select id="commentShift"></select></div>
           <div class="field">
@@ -1188,9 +1202,11 @@
     await loadHiddenComments();
     bindEvents();
     // [NUEVO] paneles desplegables que reemplazan los <select multiple>
+    initMultiselect("filterMonth");
     initMultiselect("filterRole");
     initMultiselect("filterClub");
     initMultiselect("commentClub");
+    initMultiselect("commentMonth");
     initMultiselect("commentTipo");
     setupEmptyDashboard();
     // [FIX] loadBackendData() ya no se dispara en paralelo con loadData():
@@ -1211,9 +1227,9 @@
     document.getElementById("avanceMonth").addEventListener("change", renderAvance);
     document.getElementById("avanceClub").addEventListener("change", renderAvance);
     document.getElementById("clearFiltersBtn").addEventListener("click", () => {
-      ["filterMonth","filterShift"]
+      ["filterShift"]
         .forEach(id => document.getElementById(id).value = "Todos");
-      ["filterRole","filterClub"].forEach(id => {
+      ["filterMonth","filterRole","filterClub"].forEach(id => {
         Array.from(document.getElementById(id).options).forEach(o => o.selected = false);
         updateMultiselectLabel(id); // [FIX] refleja en el botón/panel que quedó en "todos"
       });
@@ -1234,12 +1250,12 @@
   }
 
   function setupEmptyDashboard() {
-    fillSelect("filterMonth",     ["Todos",...MONTHS], "Todos");
+    fillMultiSelect("filterMonth", MONTHS); // ahora permite elegir varios meses
     fillMultiSelect("filterClub", CLUBS); // [FIX] ahora permite elegir varias sucursales
     fillMultiSelect("filterRole", []);
     fillSelect("filterShift",     ["Todos"],            "Todos");
     fillMultiSelect("commentClub", CLUBS); // [FIX] ahora permite elegir varias sucursales
-    fillSelect("commentMonth",    ["Todos",...MONTHS], "Todos");
+    fillMultiSelect("commentMonth", MONTHS); // ahora permite elegir varios meses
     fillSelect("commentRole",     ["Todos"],            "Todos");
     fillSelect("commentShift",    ["Todos"],            "Todos");
     fillMultiSelect("commentTipo", TIPOS_INCIDENCIA); // [FIX] ahora permite elegir varios tipos
@@ -1692,12 +1708,12 @@
 
   // ─── FILTROS ─────────────────────────────────────────────────────────────────
   function populateFilters() {
-    keepOrFill("filterMonth",    ["Todos",...MONTHS]);
+    keepOrFillMulti("filterMonth", MONTHS); // ahora permite elegir varios meses
     keepOrFillMulti("filterClub", CLUBS); // [FIX] ahora permite elegir varias sucursales
     keepOrFillMulti("filterRole", unique(respuestas.map(d=>d.rol)).sort());
     keepOrFill("filterShift",    ["Todos",...unique(respuestas.map(d=>d.turno)).sort()]);
     keepOrFillMulti("commentClub", CLUBS); // [FIX] ahora permite elegir varias sucursales
-    keepOrFill("commentMonth",   ["Todos",...MONTHS]);
+    keepOrFillMulti("commentMonth", MONTHS); // ahora permite elegir varios meses
     const comRows = respuestas.filter(r=>isRelevantComment(r.comentarios));
     keepOrFill("commentRole",  ["Todos",...unique(comRows.map(d=>d.rol)).sort()]);
     keepOrFill("commentShift", ["Todos",...unique(comRows.map(d=>d.turno)).sort()]);
@@ -1728,6 +1744,8 @@
   // cualquier <select multiple> oculto que use el patrón botón+panel).
   // Sin selección = "todos". Preserva la selección previa si sigue vigente.
   const MULTISELECT_LABELS = {
+    filterMonth:  { all: "Todos los meses", many: n => `${n} meses seleccionados` },
+    commentMonth: { all: "Todos los meses", many: n => `${n} meses seleccionados` },
     filterRole:   { all: "Todos los roles", many: n => `${n} roles seleccionados` },
     filterClub:   { all: "Todas las sucursales", many: n => `${n} sucursales seleccionadas` },
     commentClub:  { all: "Todas las sucursales", many: n => `${n} sucursales seleccionadas` },
@@ -1910,12 +1928,12 @@
   }
 
   function getFilteredData() {
-    const month    = document.getElementById("filterMonth").value;
+    const months   = getSelectedValues("filterMonth"); // multi-selección
     const clubs    = getSelectedValues("filterClub"); // [FIX] ahora es multi-selección
     const roles    = getSelectedValues("filterRole");
     const shift    = document.getElementById("filterShift").value;
     return respuestas.filter(item => {
-      if (month !== "Todos" && item.mes   !== month) return false;
+      if (months.length && !months.includes(item.mes)) return false;
       if (clubs.length && !clubs.includes(item.club)) return false;
       if (roles.length && !roles.includes(item.rol)) return false;
       if (shift !== "Todos" && item.turno !== shift) return false;
@@ -1930,8 +1948,8 @@
   // caminatas contra la Meta mensual del club, leído de la hoja
   // "Caminatas realizadas" a través del backend (caminatasClubData).
   function getCumplimientoCaminatasClub_(club) {
-    const month = document.getElementById("filterMonth").value;
-    const registros = caminatasClubData.filter(r => r.club === club && (month === "Todos" || r.mes === month));
+    const months = getSelectedValues("filterMonth");
+    const registros = caminatasClubData.filter(r => r.club === club && (!months.length || months.includes(r.mes)));
 
     if (!registros.length) {
       return { pct: 0, real: 0, meta: 0, estado: "Sin datos" };
@@ -2204,13 +2222,13 @@
   // (#filterRole), ya que la hoja "Gafete" ya trae el desglose por
   // rol/turno/sucursal/motivo y el backend (Codigo.gs) expone el campo "rol".
   function renderGafeteDonut() {
-    const month = document.getElementById("filterMonth").value;
+    const months = getSelectedValues("filterMonth");
     const clubs = getSelectedValues("filterClub"); // [FIX] ahora es multi-selección
     const shift = document.getElementById("filterShift").value;
     const roles = getSelectedValues("filterRole");
 
     const filtered = motivosGafeteData.filter(m =>
-      (month === "Todos" || m.mes   === month) &&
+      (!months.length || months.includes(m.mes)) &&
       (!clubs.length || clubs.includes(m.club)) &&
       (shift === "Todos" || m.turno === shift) &&
       (!roles.length || roles.includes(m.rol))
@@ -2410,7 +2428,7 @@
     if (!panel || panel.classList.contains("hidden")) return;
 
     const clubs = getSelectedValues("commentClub"); // [FIX] ahora es multi-selección
-    const month = document.getElementById("commentMonth").value || "Todos";
+    const months = getSelectedValues("commentMonth"); // multi-selección
     const role  = document.getElementById("commentRole").value  || "Todos";
     const shift = document.getElementById("commentShift").value || "Todos";
     const tiposFiltro = getSelectedValues("commentTipo"); // [FIX] ahora es multi-selección
@@ -2430,7 +2448,7 @@
     // pendientes/resueltos/todos — se usa para el resumen de incidencias.
     const base = respuestas.filter(item =>
       (!clubs.length || clubs.includes(item.club)) &&
-      (month ==="Todos" || item.mes   ===month) &&
+      (!months.length || months.includes(item.mes)) &&
       (role  ==="Todos" || item.rol   ===role)  &&
       (shift ==="Todos" || item.turno ===shift) &&
       (!tiposFiltro.length || tiposFiltro.includes(categoriaEfectiva(item))) &&

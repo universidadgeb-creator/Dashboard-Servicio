@@ -607,14 +607,58 @@
       gap:22px;
     }
 
+    /* Encabezado de grupo clicable: el detalle (las áreas) solo se arma y
+       se muestra cuando se abre, para no cargar de golpe las ~15 tarjetas. */
+    .area-group-head{
+      width:100%;
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:var(--card);
+      padding:16px 18px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      cursor:pointer;
+      text-align:left;
+      font-family:inherit;
+    }
+
+    .area-group-head:hover{background:var(--brand-soft)}
+
     .area-group-title{
-      margin:0 0 12px;
+      margin:0;
       font-size:14px;
       font-weight:900;
       color:var(--brand-dark);
       text-transform:uppercase;
       letter-spacing:.04em;
     }
+
+    .area-group-count{
+      margin-left:10px;
+      font-weight:400;
+      text-transform:none;
+      letter-spacing:normal;
+      color:var(--gray);
+    }
+
+    .area-group.open .area-group-head{
+      border-radius:16px 16px 0 0;
+      border-bottom-color:transparent;
+    }
+
+    .area-group.open .chev{transform:rotate(180deg)}
+
+    .area-group-body{
+      display:none;
+      border:1px solid var(--line);
+      border-top:0;
+      border-radius:0 0 16px 16px;
+      padding:16px;
+    }
+
+    .area-group.open .area-group-body{display:block}
 
     .area-cards{
       display:grid;
@@ -960,7 +1004,14 @@
       <div class="filters">
         <div>
           <label>Mes</label>
-          <select id="mes"></select>
+          <div class="ms" id="mesMs">
+            <button type="button" class="ms-toggle" id="mesToggle" aria-haspopup="listbox" aria-expanded="false">
+              <span id="mesToggleLabel">Todos los meses</span>
+              <span class="ms-caret">⌄</span>
+            </button>
+            <div class="ms-panel" id="mesPanel" hidden></div>
+          </div>
+          <select id="mes" multiple class="visually-hidden"></select>
         </div>
         <div>
           <label>Club</label>
@@ -1080,7 +1131,14 @@
           </div>
           <div>
             <label>Mes</label>
-            <select id="teamMes"></select>
+            <div class="ms" id="teamMesMs">
+              <button type="button" class="ms-toggle" id="teamMesToggle" aria-haspopup="listbox" aria-expanded="false">
+                <span id="teamMesToggleLabel">Todos los meses</span>
+                <span class="ms-caret">⌄</span>
+              </button>
+              <div class="ms-panel" id="teamMesPanel" hidden></div>
+            </div>
+            <select id="teamMes" multiple class="visually-hidden"></select>
           </div>
           <div>
             <label>Club</label>
@@ -1232,6 +1290,7 @@ function bindFilters(){
   ["mes","club","area","turno"].forEach(id=>{
     document.getElementById(id).addEventListener("change", render);
   });
+  bindMsDropdown("mes");
   bindMsDropdown("club");
   bindMsDropdown("area");
 }
@@ -1243,6 +1302,8 @@ function bindFilters(){
 // (#club, #area) siguen siendo la fuente de verdad: el resto del código
 // (filteredRecords, getSelectedValues, etc.) no cambia.
 const MS_DROPDOWN_LABELS = {
+  mes: {all:"Todos los meses", multi:"meses seleccionados"},
+  teamMes: {all:"Todos los meses", multi:"meses seleccionados"},
   club: {all:"Todos los clubes", multi:"clubes seleccionados"},
   area: {all:"Todas las áreas", multi:"áreas seleccionadas"},
   teamSelect: {all:"Todas las incidencias", multi:"incidencias seleccionadas"},
@@ -1344,7 +1405,7 @@ async function loadData(){
 }
 
 function setupFilters(){
-  populate("mes", unique(records.map(r=>r.mes).filter(Boolean)).sort(sortMonths), "Todos los meses");
+  populateMulti("mes", unique(records.map(r=>r.mes).filter(Boolean)).sort(sortMonths));
   populateMulti("club", CLUBS);
   populateMulti("area", unique(records.map(r=>r.area).filter(Boolean)).sort());
   populate("turno", unique(records.map(r=>r.turno).filter(Boolean)).sort(), "Todos los turnos");
@@ -1383,13 +1444,13 @@ function getSelectedValues(id){
 }
 
 function filteredRecords(){
-  const mes = document.getElementById("mes").value;
+  const meses = getSelectedValues("mes");
   const clubs = getSelectedValues("club");
   const areas = getSelectedValues("area");
   const turno = document.getElementById("turno").value;
 
   return records.filter(r=>{
-    if(mes && r.mes !== mes) return false;
+    if(meses.length && !meses.includes(r.mes)) return false;
     if(clubs.length && !clubs.includes(r.club)) return false;
     if(areas.length && !areas.includes(r.area)) return false;
     if(turno && r.turno !== turno) return false;
@@ -1564,9 +1625,9 @@ function renderClubs(){
   const wrap = document.getElementById("clubs");
   wrap.innerHTML = "";
 
-  const mesFiltro = document.getElementById("mes").value;
+  const mesFiltro = getSelectedValues("mes");
   const clubsFiltro = getSelectedValues("club");
-  const meses = mesFiltro ? [mesFiltro] : MESES_CAMINATAS;
+  const meses = mesFiltro.length ? mesFiltro : MESES_CAMINATAS;
   const clubsToShow = clubsFiltro.length ? CLUBS.filter(c=>clubsFiltro.includes(c)) : CLUBS;
 
   clubsToShow.forEach(club=>{
@@ -1757,7 +1818,19 @@ function renderAreaCharts(areas){
   grouped.forEach(group=>{
     const groupEl = document.createElement("div");
     groupEl.className = "area-group";
-    groupEl.innerHTML = `<h3 class="area-group-title">${escapeHtml(group.name)}</h3>`;
+    groupEl.innerHTML = `
+      <button class="area-group-head" type="button" aria-expanded="false">
+        <h3 class="area-group-title">${escapeHtml(group.name)}<span class="area-group-count">(${group.items.length})</span></h3>
+        <div class="chev">⌄</div>
+      </button>
+      <div class="area-group-body"></div>
+    `;
+
+    const groupBtn = groupEl.querySelector(".area-group-head");
+    groupBtn.addEventListener("click", ()=>{
+      const isOpen = groupEl.classList.toggle("open");
+      groupBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
 
     const grid = document.createElement("div");
     grid.className = "area-cards";
@@ -1808,7 +1881,7 @@ function renderAreaCharts(areas){
       grid.appendChild(card);
     });
 
-    groupEl.appendChild(grid);
+    groupEl.querySelector(".area-group-body").appendChild(grid);
     wrap.appendChild(groupEl);
   });
 }
@@ -1962,6 +2035,7 @@ function bindTeamPanel(){
     document.getElementById(id).addEventListener("change", renderTeamPanel);
   });
   bindMsDropdown("teamSelect");
+  bindMsDropdown("teamMes");
   bindMsDropdown("teamClub");
 }
 
@@ -1978,7 +2052,7 @@ function unlockTeamPanel(){
 
 function setupTeamFilters(){
   populateMulti("teamSelect", TEAM_TIPOS);
-  populate("teamMes", unique(records.map(r=>r.mes).filter(Boolean)).sort(sortMonths), "Todos los meses");
+  populateMulti("teamMes", unique(records.map(r=>r.mes).filter(Boolean)).sort(sortMonths));
   populateMulti("teamClub", CLUBS);
   populate("teamTurno", unique(records.map(r=>r.turno).filter(Boolean)).sort(), "Todos los turnos");
 }
@@ -2034,7 +2108,7 @@ function renderTeamPanel(){
   // todos los clubes (igual que los demás filtros del dashboard).
   const teamsSel = getSelectedValues("teamSelect");
   const teams = teamsSel.length ? teamsSel : TEAM_TIPOS;
-  const mes = document.getElementById("teamMes").value;
+  const meses = getSelectedValues("teamMes");
   const clubs = getSelectedValues("teamClub");
   const turno = document.getElementById("teamTurno").value;
   const estado = document.getElementById("teamEstado").value;
@@ -2042,7 +2116,7 @@ function renderTeamPanel(){
   let incidents = [];
   teams.forEach(t => { incidents = incidents.concat(buildTeamIncidents(t)); });
   incidents = incidents.filter(i=>{
-    if(mes && i.mes !== mes) return false;
+    if(meses.length && !meses.includes(i.mes)) return false;
     if(clubs.length && !clubs.includes(i.club)) return false;
     if(turno && i.turno !== turno) return false;
     return true;
