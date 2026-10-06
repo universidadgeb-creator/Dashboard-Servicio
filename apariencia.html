@@ -312,8 +312,13 @@
     .badge.red { background: var(--red); }
     .badge.gray { background: var(--gray); }
 
+    /* position + z-index: las listas desplegables de los filtros deben quedar
+       por encima de los paneles de abajo (cada .panel crea su propia capa por
+       el backdrop-filter, y sin esto la gráfica tapaba la lista de Club). */
     .filters-panel {
       margin-top: 22px;
+      position: relative;
+      z-index: 30;
     }
 
     .filters-grid {
