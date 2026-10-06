@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Caminata de Servicio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   <style>
@@ -18,7 +21,7 @@
       --text: #102033;
       --muted: #667085;
       --border: #d9e3ea;
-      --green: #13a56b;
+      --green: #3e700c;
       --yellow: #d99a16;
       --red: #c94032;
       --gray: #98a2b3;
@@ -35,7 +38,7 @@
 
     body {
       margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
+      font-family: "Poppins", Arial, Helvetica, sans-serif;
       background:
         radial-gradient(circle at top left, rgba(158, 225, 225, 0.35), transparent 34%),
         linear-gradient(180deg, #f8fbfd 0%, var(--bg) 42%, #edf4f8 100%);
@@ -186,6 +189,49 @@
 
     .grid-4 {
       grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    /* Una sola sucursal: tarjeta y gráfica de acumulado mensual lado a lado. */
+    .caminata-row.solo {
+      display: grid;
+      grid-template-columns: minmax(240px, 1fr) minmax(0, 2.6fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .caminata-row.solo > .section {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .caminata-row.solo #clubCards,
+    .caminata-row.solo #clubCards .club-card {
+      flex: 1;
+    }
+
+    .caminata-row.solo #clubCards .club-card {
+      justify-content: center;
+    }
+
+    @media (max-width: 900px) {
+      .caminata-row.solo { grid-template-columns: 1fr; }
+    }
+
+    /* Imagen del uniforme del rol más alto en las tarjetas de área. */
+    .area-top-rol {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      width: 100%;
+    }
+
+    .area-top-rol img {
+      height: 140px;
+      width: auto;
+      object-fit: contain;
     }
 
     .grid-7 {
@@ -833,10 +879,13 @@
       </div>
     </section>
 
+    <!-- Con una sola sucursal seleccionada, su tarjeta y la gráfica de
+         acumulado mensual se acomodan lado a lado (clase .solo). -->
+    <div id="caminataRow" class="caminata-row">
     <!-- CARDS CLUBS -->
     <section class="section">
       <div class="section-head"><div>
-        <h2 class="section-title">Cumplimiento mensual de caminatas por club</h2>
+        <h2 class="section-title">Caminata por sucursal</h2>
       </div></div>
       <div id="clubCards" class="grid"></div>
     </section>
@@ -844,10 +893,11 @@
     <!-- GRÁFICA -->
     <section class="section panel">
       <div class="section-head"><div>
-        <h2 class="section-title">Cumplimiento mensual</h2>
+        <h2 class="section-title">Acumulado mensual</h2>
       </div></div>
       <div class="chart-wrap"><canvas id="monthlyChart"></canvas></div>
     </section>
+    </div>
 
     <!-- KPIs -->
     <section class="section">
@@ -1038,7 +1088,7 @@
     { key:"H",  name:"Higiene de manos",             description:"Manos limpias, uñas cuidadas y apariencia alineada al estándar." },
     { key:"P",  name:"Peinado",                      description:"Cabello limpio, peinado o estilizado conforme a la imagen esperada." },
     { key:"A",  name:"Accesorios",                   description:"Accesorios discretos, apropiados y acordes a una imagen profesional." },
-    { key:"LU", name:"Estado del Uniforme",           description:"Uniforme limpio, sin manchas, arrugas o daños visibles." },
+    { key:"LU", name:"Estado del Uniforme",           description:"Porta el uniforme correspondiente a su rol sin prendas adicionales y de manera correcta." },
     { key:"U",  name:"Uso correcto del Uniforme",     description:"Uniforme completo, correctamente colocado y ajustado al protocolo." },
     { key:"C",  name:"Calzado",                      description:"Calzado del color establecido, limpio y en buen estado." },
     { key:"G",  name:"Gafete",                       description:"Gafete visible, limpio, alineado y portado correctamente." }
@@ -1117,12 +1167,22 @@
   const AREA_ORDEN = ["Administración", "Deportes", "Acuática", "Orden y Limpieza", "Comercial"];
   const AREA_COLORS = {
     "Administración": "#007882",
-    "Deportes": "#13a56b",
+    "Deportes": "#3e700c",
     "Acuática": "#59898c",
     "Orden y Limpieza": "#d99a16",
     "Comercial": "#c94032"
   };
   function getArea(rol) { return AREA_POR_ROL[rol] || "Sin área"; }
+
+  // Imagen de uniforme por rol (carpeta roles/, tomadas de las Políticas
+  // de Apariencia). Los roles sin imagen solo muestran el nombre.
+  const ROL_IMAGENES = {
+    "Mobility": "roles/Mobility.png",
+    "Ejecutivo": "roles/Administrativo.png",
+    "Recepción": "roles/Administrativo.png",
+    "Lider": "roles/Administrativo.png",
+    "Relaciones Públicas": "roles/Administrativo.png"
+  };
 
   // [FIX 2026-07-02] loadData() (gviz) y loadBackendData() (Apps Script) corren
   // en paralelo. Si el backend responde antes de que "respuestas" esté lista,
@@ -1147,6 +1207,7 @@
   }
 
   Chart.register(ChartDataLabels);
+  Chart.defaults.font.family = '"Poppins", Arial, Helvetica, sans-serif';
 
   // ─── STORAGE ─────────────────────────────────────────────────────────────────
   const STORAGE_KEY = "ch_comment_states";
@@ -1880,6 +1941,18 @@
     return { bottom: r[0], top: r[r.length - 1] };
   }
 
+  // Rol con mejor resultado general dentro de un conjunto de respuestas.
+  function getTopRol(rows) {
+    const porRol = {};
+    rows.forEach(r => { if (r.rol) (porRol[r.rol] = porRol[r.rol] || []).push(r); });
+    let best = null;
+    Object.keys(porRol).forEach(rol => {
+      const pct = calcGeneral(porRol[rol]).percent;
+      if (pct !== null && pct !== undefined && (!best || pct > best.percent)) best = { rol, percent: pct };
+    });
+    return best;
+  }
+
   // [FIX] Antes era una sola dona con las 5 áreas como porciones (útil para
   // ver proporciones, pero no para leer de un vistazo la calificación de
   // cada área). Ahora, a pedido, es una tarjeta individual por área — mismo
@@ -1912,6 +1985,8 @@
       const col  = stateColor(getState(pct, rows.length));
       const deg  = Math.min(pct, 100) * 3.6;
       const { top, bottom } = getHighLowCriterion(rows);
+      const rolTop = getTopRol(rows);
+      const rolImg = rolTop && ROL_IMAGENES[rolTop.rol];
 
       const card = document.createElement("article");
       card.className = "club-card";
@@ -1922,7 +1997,11 @@
         </div>
         <h3>${escapeHtml(area)}</h3>
         <p class="club-meta">Más alto: <strong>${top ? escapeHtml(top.name) + " (" + top.percent + "%)" : "Sin datos"}</strong></p>
-        <p class="club-meta">Más bajo: <strong>${bottom ? escapeHtml(bottom.name) + " (" + bottom.percent + "%)" : "Sin datos"}</strong></p>`;
+        <p class="club-meta">Enfoque: <strong>${bottom ? escapeHtml(bottom.name) + " (" + bottom.percent + "%)" : "Sin datos"}</strong></p>
+        ${rolTop ? `<div class="area-top-rol">
+          ${rolImg ? `<img src="${encodeURI(rolImg)}" alt="Uniforme ${escapeHtml(rolTop.rol)}" onerror="this.remove()" />` : ""}
+          <p class="club-meta">Rol más alto: <strong>${escapeHtml(rolTop.rol)} (${rolTop.percent}%)</strong></p>
+        </div>` : ""}`;
       c.appendChild(card);
     });
   }
@@ -1973,6 +2052,7 @@
     // de Club; ahora, si hay sucursales seleccionadas, solo se muestran esas.
     const clubsSel = getSelectedValues("filterClub");
     const clubsToShow = clubsSel.length ? clubsSel : CLUBS;
+    document.getElementById("caminataRow").classList.toggle("solo", clubsToShow.length === 1);
     clubsToShow.forEach(club => {
       const rows = filtered.filter(r=>r.club===club);
       const cam  = getCumplimientoCaminatasClub_(club);
@@ -2194,8 +2274,7 @@
           conic-gradient(${col} 0deg,${col} ${deg}deg,#e8eef2 ${deg}deg 360deg);">
           <strong>${pct===null?"0":pct}%</strong>
         </div>
-        <h3>${cr.name}</h3><p>${cr.description}</p>
-        <span class="badge ${badgeClass(st)}">${st}</span>`;
+        <h3>${cr.name}</h3><p>${cr.description}</p>`;
       c.appendChild(card);
     });
   }
@@ -2248,7 +2327,7 @@
     const totalSum = Object.values(totals).reduce((a,b)=>a+b, 0);
 
     const listEl = document.getElementById("gafeteMotivosList");
-    const colors = ["#007882","#7cd4d2","#9ee1e1","#d99a16","#c94032","#13a56b","#5a7080","#98a2b3"];
+    const colors = ["#007882","#7cd4d2","#9ee1e1","#d99a16","#c94032","#3e700c","#5a7080","#98a2b3"];
 
     if (!totalSum) {
       listEl.innerHTML = `<div class="empty">Sin incidencias de Gafete para esta selección de Mes/Sucursal/Rol/Turno.</div>`;
@@ -2337,7 +2416,7 @@
         });
       });
       const pct = metaTotal > 0 ? Math.round((realTotal/metaTotal)*100) : 0;
-      const color = pct >= 100 ? "#13a56b" : pct >= 60 ? "#d99a16" : "#c94032";
+      const color = pct >= 100 ? "#3e700c" : pct >= 60 ? "#d99a16" : "#c94032";
       return `
         <div style="flex:1; min-width:160px; background:#fff; border:1px solid #e0e8ee; border-radius:10px; padding:14px 16px;">
           <div style="font-size:12px; color:#5a7080; font-weight:700; margin-bottom:6px;">${cl}</div>
@@ -2632,7 +2711,7 @@
         </div>
         <div style="flex:1;min-width:140px;background:#fff;border:1px solid #e0e8ee;border-radius:10px;padding:14px 16px;">
           <div style="font-size:12px;color:#5a7080;font-weight:700;margin-bottom:6px;">Atendidas</div>
-          <div style="font-size:24px;font-weight:800;color:#13a56b;">${atendidas} <span style="font-size:14px;font-weight:700;color:#5a7080;">(${pct}%)</span></div>
+          <div style="font-size:24px;font-weight:800;color:#3e700c;">${atendidas} <span style="font-size:14px;font-weight:700;color:#5a7080;">(${pct}%)</span></div>
         </div>
         <div style="flex:1;min-width:140px;background:#fff;border:1px solid #e0e8ee;border-radius:10px;padding:14px 16px;">
           <div style="font-size:12px;color:#5a7080;font-weight:700;margin-bottom:6px;">Pendientes</div>
@@ -2790,7 +2869,7 @@
     return "Requiere atención";
   }
   function stateColor(st) {
-    if (st==="Excelente") return "#13a56b";
+    if (st==="Excelente") return "#3e700c";
     if (st==="En seguimiento") return "#d99a16";
     if (st==="Requiere atención") return "#c94032";
     return "#98a2b3";
