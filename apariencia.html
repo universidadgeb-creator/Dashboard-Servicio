@@ -1089,8 +1089,8 @@
     { key:"H",  name:"Higiene de manos",             description:"Manos limpias, uñas cuidadas y apariencia alineada al estándar." },
     { key:"P",  name:"Peinado",                      description:"Cabello limpio, peinado o estilizado conforme a la imagen esperada." },
     { key:"A",  name:"Accesorios",                   description:"Accesorios discretos, apropiados y acordes a una imagen profesional." },
-    { key:"LU", name:"Estado del Uniforme",           description:"Porta el uniforme correspondiente a su rol sin prendas adicionales y de manera correcta." },
-    { key:"U",  name:"Uso correcto del Uniforme",     description:"Uniforme completo, correctamente colocado y ajustado al protocolo." },
+    { key:"LU", name:"Estado del Uniforme",           description:"Uniforme limpio, sin manchas, arrugas o daños visibles." },
+    { key:"U",  name:"Uso correcto del Uniforme",     description:"Porta el uniforme correspondiente a su rol sin prendas adicionales y de manera correcta." },
     { key:"C",  name:"Calzado",                      description:"Calzado del color establecido, limpio y en buen estado." },
     { key:"G",  name:"Gafete",                       description:"Gafete visible, limpio, alineado y portado correctamente." }
   ];
@@ -2097,6 +2097,21 @@
   // no tiene registro ese mes (ej. Center antes de agosto, que arrancó su
   // seguimiento después), el punto queda vacío (null) en vez de mostrar un
   // falso 0%.
+  // Tope del eje Y con margen sobre el valor más alto, para que las líneas
+  // y puntos en 100% (o más) no se corten en el borde de la gráfica.
+  function yMaxConHolgura_(datasets) {
+    const vals = datasets.flatMap(d => d.data).filter(v => v !== null && v !== undefined && !isNaN(v));
+    const max = vals.length ? Math.max(...vals) : 100;
+    return Math.max(110, Math.ceil((max + 10) / 10) * 10);
+  }
+  // Piso del eje Y un poco debajo del valor más bajo, para que las
+  // diferencias entre sucursales se lean (en vez de empezar siempre en 0%).
+  function yMinConHolgura_(datasets) {
+    const vals = datasets.flatMap(d => d.data).filter(v => v !== null && v !== undefined && !isNaN(v));
+    if (!vals.length) return 0;
+    return Math.max(0, Math.floor((Math.min(...vals) - 10) / 10) * 10);
+  }
+
   function renderMonthlyChart() {
     const ctx = document.getElementById("monthlyChart").getContext("2d");
     const clubsSel = getSelectedValues("filterClub"); // [FIX] ahora es multi-selección
@@ -2109,7 +2124,7 @@
         return registro.porcentaje;
       }),
       borderColor: CLUB_COLORS[club], backgroundColor: CLUB_COLORS[club],
-      tension:0.42, borderWidth:3, pointRadius:4, pointHoverRadius:6, fill:false,
+      tension:0.42, cubicInterpolationMode:"monotone", borderWidth:3, pointRadius:4, pointHoverRadius:6, fill:false,
       spanGaps:false
     }));
     if (monthlyChart) monthlyChart.destroy();
@@ -2128,7 +2143,7 @@
           tooltip:{callbacks:{label:ctx=>ctx.parsed.y===null?`${ctx.dataset.label}: Sin datos`:`${ctx.dataset.label}: ${Math.round(ctx.parsed.y)}%`}}
         },
         scales:{
-          y:{min:0,ticks:{callback:v=>v+"%"},grid:{color:"#e8eef2"}},
+          y:{min:0,max:yMaxConHolgura_(datasets),ticks:{callback:v=>v+"%"},grid:{color:"#e8eef2"}},
           x:{grid:{display:false}}
         }
       }
@@ -2193,7 +2208,7 @@
         return rows.length ? calcGeneral(rows).percent : null;
       }),
       borderColor: CLUB_COLORS[club], backgroundColor: CLUB_COLORS[club],
-      tension:0.42, borderWidth:3, pointRadius:4, pointHoverRadius:6, fill:false,
+      tension:0.42, cubicInterpolationMode:"monotone", borderWidth:3, pointRadius:4, pointHoverRadius:6, fill:false,
       spanGaps:false
     }));
 
@@ -2226,7 +2241,7 @@
           }
         },
         scales:{
-          y:{min:0,max:100,ticks:{callback:v=>v+"%"},grid:{color:"#e8eef2"}},
+          y:{min:yMinConHolgura_(datasets),max:yMaxConHolgura_(datasets),ticks:{stepSize:10,callback:v=>v+"%"},grid:{color:"#e8eef2"}},
           x:{grid:{display:false}}
         }
       }

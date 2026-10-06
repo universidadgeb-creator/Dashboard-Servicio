@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Caminata de Servicio · Ambiente Físico</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
@@ -13,7 +16,7 @@
       --nu:#007882;
       --gmt:#7cd4d2;
       --vr:#59898c;
-      --green:#2e7d32;
+      --green:#3e700c;
       --yellow:#f9a825;
       --red:#c62828;
       --gray:#667085;
@@ -27,7 +30,7 @@
 
     body{
       margin:0;
-      font-family:Arial, Helvetica, sans-serif;
+      font-family:"Poppins", Arial, Helvetica, sans-serif;
       background:var(--bg);
       color:var(--text);
     }
@@ -859,7 +862,7 @@
 
     .incident-card.resolved{
       background:#f3faf4;
-      border-color:rgba(46,125,50,.25);
+      border-color:rgba(62,112,12,.25);
     }
 
     .incident-meta{
@@ -1250,7 +1253,7 @@ const labelPlugin = {
   afterDatasetsDraw(chart) {
     const {ctx} = chart;
     ctx.save();
-    ctx.font = "bold 11px Arial";
+    ctx.font = 'bold 11px "Poppins", Arial, sans-serif';
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
 
@@ -1279,6 +1282,7 @@ const labelPlugin = {
 };
 
 Chart.register(labelPlugin);
+Chart.defaults.font.family = '"Poppins", Arial, Helvetica, sans-serif';
 
 document.addEventListener("DOMContentLoaded", async () => {
   bindFilters();
@@ -1909,7 +1913,7 @@ function fmt(v){
 
 function status(v){
   if(v === null || v === undefined || isNaN(v)) return {text:"Sin datos",color:"#9e9e9e"};
-  if(v >= 90) return {text:"Meta lograda",color:"#2e7d32"};
+  if(v >= 90) return {text:"Meta lograda",color:"#3e700c"};
   if(v >= 80) return {text:"En seguimiento",color:"#f9a825"};
   return {text:"Prioritario",color:"#c62828"};
 }
