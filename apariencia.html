@@ -1174,14 +1174,24 @@
   };
   function getArea(rol) { return AREA_POR_ROL[rol] || "Sin área"; }
 
-  // Imagen de uniforme por rol (carpeta roles/, tomadas de las Políticas
-  // de Apariencia). Los roles sin imagen solo muestran el nombre.
+  // Imagen de uniforme por rol (carpeta roles/, recortadas de las imágenes
+  // de la carpeta "Roles" de Capital Humano). "Lider" usa la de Ejecutivo
+  // (mismo uniforme según la Política de Apariencia).
   const ROL_IMAGENES = {
-    "Mobility": "roles/Mobility.png",
-    "Ejecutivo": "roles/Administrativo.png",
-    "Recepción": "roles/Administrativo.png",
-    "Lider": "roles/Administrativo.png",
-    "Relaciones Públicas": "roles/Administrativo.png"
+    "Ejecutivo": "roles/ejecutivo.png",
+    "Recepción": "roles/recepcion.png",
+    "Kids": "roles/kids.png",
+    "Lider": "roles/ejecutivo.png",
+    "Caja estacionamiento": "roles/orden-limpieza.png",
+    "Vestidores / técnico de Orden y Limpieza": "roles/orden-limpieza.png",
+    "Concierge vestidores": "roles/concierge-vestidores.png",
+    "Coach deportivo": "roles/coach.png",
+    "Nutrición": "roles/nutricion.png",
+    "Mobility": "roles/mobility.png",
+    "Estiramiento": "roles/estiramiento.png",
+    "Recepción Acuática": "roles/recepcion-acuatica.png",
+    "Instructor Acuática": "roles/instructor-acuatica.png",
+    "Relaciones Públicas": "roles/relaciones-publicas.png"
   };
 
   // [FIX 2026-07-02] loadData() (gviz) y loadBackendData() (Apps Script) corren
