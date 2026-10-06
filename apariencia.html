@@ -564,12 +564,13 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-xl);
-      padding: 18px;
+      padding: 16px 14px;
       box-shadow: var(--shadow-soft);
-      min-height: 318px;
+      /* Sin altura mínima: ya no lleva la etiqueta de estado, así que la
+         tarjeta termina justo después de la explicación del criterio. */
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
     }
 
     .criterion-card .donut {
