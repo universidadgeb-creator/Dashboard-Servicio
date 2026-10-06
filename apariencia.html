@@ -1176,13 +1176,12 @@
   function getArea(rol) { return AREA_POR_ROL[rol] || "Sin área"; }
 
   // Imagen de uniforme por rol (carpeta roles/, recortadas de las imágenes
-  // de la carpeta "Roles" de Capital Humano). "Lider" usa la de Ejecutivo
-  // (mismo uniforme según la Política de Apariencia).
+  // de la carpeta "Roles" de Capital Humano). "Lider" queda sin imagen
+  // hasta que se genere la suya (mientras, solo se muestra el nombre).
   const ROL_IMAGENES = {
     "Ejecutivo": "roles/ejecutivo.png",
     "Recepción": "roles/recepcion.png",
     "Kids": "roles/kids.png",
-    "Lider": "roles/ejecutivo.png",
     "Caja estacionamiento": "roles/orden-limpieza.png",
     "Vestidores / técnico de Orden y Limpieza": "roles/orden-limpieza.png",
     "Concierge vestidores": "roles/concierge-vestidores.png",
