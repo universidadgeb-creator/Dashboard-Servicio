@@ -816,7 +816,7 @@
 
     .team-select-row{
       display:grid;
-      grid-template-columns:repeat(5,minmax(150px,1fr));
+      grid-template-columns:repeat(6,minmax(140px,1fr));
       gap:14px;
       margin-bottom:18px;
     }
@@ -1157,6 +1157,10 @@
           <div>
             <label>Turno</label>
             <select id="teamTurno"></select>
+          </div>
+          <div>
+            <label>Embajador</label>
+            <select id="teamEmbajador"></select>
           </div>
           <div>
             <label>Estado</label>
@@ -2035,7 +2039,7 @@ function bindTeamPanel(){
     if(e.key === "Enter") unlockTeamPanel();
   });
 
-  ["teamSelect","teamMes","teamClub","teamTurno","teamEstado"].forEach(id=>{
+  ["teamSelect","teamMes","teamClub","teamTurno","teamEmbajador","teamEstado"].forEach(id=>{
     document.getElementById(id).addEventListener("change", renderTeamPanel);
   });
   bindMsDropdown("teamSelect");
@@ -2059,6 +2063,7 @@ function setupTeamFilters(){
   populateMulti("teamMes", unique(records.map(r=>r.mes).filter(Boolean)).sort(sortMonths));
   populateMulti("teamClub", CLUBS);
   populate("teamTurno", unique(records.map(r=>r.turno).filter(Boolean)).sort(), "Todos los turnos");
+  populate("teamEmbajador", unique(records.map(r=>r.embajador).filter(Boolean)).sort((a,b)=>a.localeCompare(b,"es")), "Todos los embajadores");
 }
 
 // Construye la lista de incidencias: una por cada respuesta de la caminata
@@ -2091,6 +2096,7 @@ function buildTeamIncidents(tipoEquipo){
       mes: record.mes,
       turno: record.turno,
       area: record.area,
+      embajador: record.embajador || "",
       comentarios: comentario,
       tipo: tipoEquipo,
       allTipos: tipos,
@@ -2115,6 +2121,7 @@ function renderTeamPanel(){
   const meses = getSelectedValues("teamMes");
   const clubs = getSelectedValues("teamClub");
   const turno = document.getElementById("teamTurno").value;
+  const embajador = document.getElementById("teamEmbajador").value;
   const estado = document.getElementById("teamEstado").value;
 
   let incidents = [];
@@ -2123,6 +2130,7 @@ function renderTeamPanel(){
     if(meses.length && !meses.includes(i.mes)) return false;
     if(clubs.length && !clubs.includes(i.club)) return false;
     if(turno && i.turno !== turno) return false;
+    if(embajador && i.embajador !== embajador) return false;
     return true;
   });
 
@@ -2178,6 +2186,7 @@ function renderTeamPanel(){
         <span><strong>Mes:</strong> ${escapeHtml(i.mes || "Sin mes")}</span>
         <span><strong>Turno:</strong> ${escapeHtml(i.turno || "Sin turno")}</span>
         <span><strong>Área/Rol:</strong> ${escapeHtml(i.area || "Sin área")}</span>
+        <span><strong>Embajador:</strong> ${escapeHtml(i.embajador || "Sin embajador")}</span>
       </div>
       <p class="incident-title">${escapeHtml(i.tipo)}</p>
       ${otrosTiposHtml}
