@@ -763,15 +763,6 @@
       }
     }
   
-    .comment-row { border:1px solid #e0e8ee; border-radius:10px; padding:16px; margin-bottom:12px; background:#fff; }
-    .comment-row.resolved { background:#f0faf5; border-color:#b2dfc8; }
-    .comment-meta { display:flex; flex-wrap:wrap; gap:8px 20px; font-size:13px; color:#5a7080; margin-bottom:8px; }
-    .comment-meta strong { color:#102033; }
-    .comment-body { font-size:14px; color:#102033; margin-bottom:12px; line-height:1.5; }
-    .comment-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
-    .comment-actions label { font-size:13px; font-weight:600; color:#102033; display:flex; align-items:center; gap:6px; cursor:pointer; }
-    .comment-actions input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#007882; }
-    .comment-actions input[type="date"] { font-size:13px; padding:4px 8px; border:1px solid #c5d4de; border-radius:6px; color:#102033; }
     .days-badge { font-size:12px; font-weight:700; padding:3px 10px; border-radius:20px; background:#e8f4f8; color:#007882; }
     .days-badge.overdue { background:#fdecea; color:#c94032; }
     .progress-table { width:100%; border-collapse:collapse; font-size:13px; }
@@ -784,6 +775,45 @@
     .prog-bar.yellow { background:#d99a16; }
     .prog-bar.red    { background:#c94032; }
     .tab-row { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+    /* [NUEVO 2026-10-16] Tabla de incidencias CH */
+    .inc-table { min-width:1260px; }
+    .inc-table th, .inc-table td { padding:10px 9px; }
+    .inc-table th { white-space:nowrap; position:sticky; top:0; z-index:1; }
+    .inc-table td { font-size:13px; color:#102033; }
+    .inc-row.inc-cerrado { background:#f4f8ef; }
+    .inc-row.inc-proceso { background:#fdf8ee; }
+    .inc-row.inc-inventario { background:#fbf1f0; }
+    .inc-name { font-weight:600; }
+    .inc-sub { font-size:12px; color:#5a7080; margin-top:2px; }
+    .inc-clamp { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; max-width:240px; }
+    .inc-muted { color:#98a2b3; }
+    .inc-num { text-align:center; font-weight:700; }
+    .inc-estado { font-family:inherit; font-size:11px; font-weight:700; line-height:1.2; border-radius:20px; padding:2px 8px; border:0; cursor:pointer; min-width:116px; width:auto; height:auto; min-height:0; box-shadow:none; color:#fff; }
+    .inc-proceso .inc-estado { background:var(--yellow); }
+    .inc-inventario .inc-estado { background:var(--red); }
+    .inc-cerrado .inc-estado { background:var(--green); }
+    /* Dona "Incidencias por estatus" */
+    .inc-resumen { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px; align-items:stretch; }
+    .inc-resumen-cards { flex:1 1 520px; display:flex; gap:12px; flex-wrap:wrap; align-content:flex-start; }
+    .inc-dona-card { flex:1 1 300px; background:#fff; border:1px solid #e0e8ee; border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; }
+    .inc-dona-body { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+    .inc-dona-wrap { position:relative; width:130px; height:130px; flex:0 0 130px; }
+    .inc-dona-legend { flex:1 1 140px; display:flex; flex-direction:column; gap:5px; font-size:12px; color:#102033; }
+    .inc-dona-legend div { display:flex; align-items:center; gap:7px; }
+    .inc-dona-legend i { width:10px; height:10px; border-radius:3px; flex:0 0 10px; }
+    .inc-dona-legend b { margin-left:auto; font-weight:700; }
+    .inc-estado option { background:#fff; color:#102033; }
+    .inc-tipo { font-family:inherit; font-size:12px; font-weight:600; color:#102033; width:auto; max-width:200px; min-height:0; padding:3px 6px; border:1px solid #d9e3ea; border-radius:8px; box-shadow:none; }
+    .inc-table-otras { min-width:1080px; }
+    .inc-table-title { margin:22px 0 0; font-size:15px; font-weight:800; color:#102033; }
+    .inc-table-title span { font-size:12px; font-weight:700; color:#007882; background:#e8f4f8; border-radius:20px; padding:2px 9px; margin-left:6px; vertical-align:middle; }
+    .inc-fecha { display:block; width:auto; min-height:0; font-size:12px; padding:3px 6px; border:1px solid #c5d4de; border-radius:6px; font-family:inherit; }
+    .inc-nota { width:100%; min-width:190px; border:1px solid #d9e3ea; border-radius:8px; padding:6px 8px; font-size:13px; font-family:inherit; resize:vertical; }
+    .inc-foto img { width:44px; height:44px; object-fit:cover; border-radius:8px; border:1px solid #d9e3ea; display:block; }
+    .inc-foto { color:#007882; font-weight:600; margin-right:4px; display:inline-block; }
+    .inc-del { background:none; border:1px solid #c5d4de; border-radius:6px; padding:3px 8px; font-size:12px; color:#5a7080; cursor:pointer; }
+    .inc-del:hover { color:#c94032; border-color:#c94032; }
+    .inc-table-wrap { max-height:640px; overflow:auto; }
     .tab-btn { padding:8px 20px; border-radius:20px; border:2px solid #007882; background:#fff; color:#007882; font-weight:700; cursor:pointer; font-size:13px; }
     .tab-btn.active { background:#007882; color:#fff; }
     .tab-content { display:none; }
@@ -952,7 +982,7 @@
     <!-- COMENTARIOS CH -->
     <section class="section panel comments-panel">
       <div class="section-head"><div>
-        <h2 class="section-title">Capital Humano | Comentarios relevantes</h2>
+        <h2 class="section-title">Capital Humano | Incidencias</h2>
       </div></div>
 
       <div id="unlockBox" class="unlock-grid">
@@ -965,8 +995,9 @@
 
       <div id="commentsPanel" class="hidden">
         <div class="tab-row">
-          <button class="tab-btn active" data-tab="pendientes">Pendientes</button>
-          <button class="tab-btn" data-tab="resueltos">Resueltos</button>
+          <button class="tab-btn active" data-tab="En proceso">En proceso</button>
+          <button class="tab-btn" data-tab="Sin inventario">Sin inventario</button>
+          <button class="tab-btn" data-tab="Cerrado">Cerrados</button>
           <button class="tab-btn" data-tab="todos">Todos</button>
         </div>
 
@@ -994,6 +1025,7 @@
           </div>
           <div class="field"><label for="commentRole">Rol</label><select id="commentRole"></select></div>
           <div class="field"><label for="commentShift">Turno</label><select id="commentShift"></select></div>
+          <div class="field"><label for="commentArea">Área</label><select id="commentArea"></select></div>
           <div class="field">
             <label for="commentTipoToggle">Tipo de incidencia</label>
             <div class="msel" id="commentTipoMsel">
@@ -1134,11 +1166,13 @@
 
   // ─── ESTADO ──────────────────────────────────────────────────────────────────
   let respuestas    = [];
+  let incidencias   = []; // [NUEVO 2026-10-16] filas de la tabla de incidencias CH (ver parseGvizTable)
+  const MESES_ES_ = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   let comentStates  = {};  // { [commentId]: { resolved, resolvedDate, tipo } }
   let hiddenComments = {}; // [NUEVO] (3) { [commentId]: true } — "Ocultar de la vista"
   let monthlyChart  = null;
   let resultsMonthlyChart = null; // [NUEVO] Resultado mensual comparativo (Política de Apariencia)
-  let activeTab     = "pendientes";
+  let activeTab     = "En proceso";
 
   // [NUEVO] (1) Cumplimiento real de caminatas por club/mes, leído de la hoja
   // "Caminatas realizadas" a través del backend (Codigo.gs).
@@ -1151,6 +1185,7 @@
   // [NUEVO] (4) Motivos de falla de Gafete, conteos brutos por club/mes/turno.
   let motivosGafeteData = []; // [{club, mes, turno, motivo, conteo}, ...]
   let gafeteChart = null;
+  let incEstadoChart = null; // [NUEVO 2026-10-16] dona "Incidencias por estatus" (panel CH)
 
   // [NUEVO] Agrupación de roles por área, para la gráfica "Resultados por
   // área". Mapeo dado directamente por Capital Humano.
@@ -1265,7 +1300,7 @@
   // tiene ese cambio, el comentario se ve eliminado en esta computadora
   // pero vuelve a aparecer al recargar.
   function hideComment(id, gvizRowIndex) {
-    if (!confirm("¿Eliminar este comentario? Dejará de aparecer para todas las computadoras.")) return;
+    if (!confirm("¿Eliminar esta incidencia? Dejará de aparecer para todas las computadoras.")) return;
     hiddenComments[id] = true;
     saveHiddenComments();
     renderComments();
@@ -1298,7 +1333,7 @@
   function bindEvents() {
     ["filterMonth","filterClub","filterRole","filterShift"]
       .forEach(id => document.getElementById(id).addEventListener("change", renderAll));
-    ["commentClub","commentMonth","commentRole","commentShift","commentTipo"]
+    ["commentClub","commentMonth","commentRole","commentShift","commentArea","commentTipo"]
       .forEach(id => document.getElementById(id).addEventListener("change", renderComments));
     document.getElementById("avanceMonth").addEventListener("change", renderAvance);
     document.getElementById("avanceClub").addEventListener("change", renderAvance);
@@ -1334,6 +1369,7 @@
     fillMultiSelect("commentMonth", MONTHS); // ahora permite elegir varios meses
     fillSelect("commentRole",     ["Todos"],            "Todos");
     fillSelect("commentShift",    ["Todos"],            "Todos");
+    fillSelect("commentArea",     ["Todos"],            "Todos");
     fillMultiSelect("commentTipo", TIPOS_INCIDENCIA); // [FIX] ahora permite elegir varios tipos
     // El apartado de Avance arranca mostrando el mes en curso automáticamente
     const currentMonth = getCurrentMonthName();
@@ -1509,7 +1545,7 @@
   // dashboard reclasifique automáticamente lo ya resuelto sin depender solo
   // de localStorage.
   function mergeResolucionesPersistidas_(resolucionesBackend) {
-    if (!respuestas.length) return;
+    if (!respuestas.length && !incidencias.length) return;
     // [FIX] Antes, si resolucionesBackend venía vacío (0 filas resueltas de
     // verdad en el Excel), la función se salía sin hacer nada — dejando
     // "pegados" para siempre en localStorage estados de "resuelto" viejos
@@ -1521,7 +1557,7 @@
     const byRowIndex = {};
     (resolucionesBackend || []).forEach(res => { byRowIndex[res.gvizRowIndex] = res; });
 
-    respuestas.forEach(r => {
+    [...respuestas, ...incidencias].forEach(r => {
       const res = byRowIndex[r.gvizRowIndex];
       comentStates[r.commentId] = {
         resolved: !!(res && res.fecha),
@@ -1587,9 +1623,6 @@
     const idx = {
       timestamp: 0,
       club:      find(has("SUCURSAL"), 2, "Club/Sucursal"),
-      emb1:      find((l) => has("SELECCIONA TU NOMBRE")(l) && !/[23]/.test(l), 3, "Embajador (bloque 1)"),
-      emb2:      find((l) => has("SELECCIONA TU NOMBRE")(l) && l.indexOf("2") >= 0, 4, "Embajador (bloque 2)"),
-      emb3:      find((l) => has("SELECCIONA TU NOMBRE")(l) && l.indexOf("3") >= 0, 5, "Embajador (bloque 3)"),
       colaboradorCols: findAll(has("NOMBRE DEL EVALUADO"), 6, "Colaborador evaluado"),
       rolCols:         findAll(has("ROL"), 7, "Rol"),
       turnoCols:       findAll(has("TURNO"), 8, "Turno"),
@@ -1615,7 +1648,16 @@
       // se ignoraba; ahora se combina con la clasificación (columna R) para
       // formar el texto completo del comentario.
       explicaIncidencia: find(has("EXPLICA INCIDENCIA"), 18, "Explica incidencia"),
-      mes:       find(eq("MES"), 19, "Mes")
+      mes:       find(eq("MES"), 19, "Mes"),
+      // [NUEVO 2026-10-16] El Form ahora tiene varias preguntas "Selecciona tu
+      // nombre" (una por sección), así que el embajador se toma de la primera
+      // que tenga dato en cada fila. ("Escribe tu nombre" no se usa: no es
+      // seguro que sea el embajador.) Más las columnas nuevas de la solicitud.
+      embajadorCols: findAll(has("SELECCIONA TU NOMBRE"), 3, "Embajador"),
+      area:              find(has("SELECCIONA AREA"), -1, "Área"),
+      tipoSolicitada:    find(has("TIPO SOLICITAD"), -1, "Tipo solicitada"),
+      cantidadSolicitada:find(has("CANTIDAD SOLICITADA"), -1, "Cantidad solicitada"),
+      foto:              find(has("FOTOGRAF"), -1, "Fotografía")
     };
 
 
@@ -1628,6 +1670,7 @@
     let gvizIndex = -1; // [NUEVO] (3) índice 0-based dentro de table.rows, para persistencia
     let droppedNoClub = 0, droppedNoMes = 0;
     const unknownClubValues = new Set(); // [FIX] para poder avisar qué texto de club no se reconoció
+    incidencias = [];
     for (const row of table.rows) {
       gvizIndex++;
       const get = (i) => {
@@ -1660,6 +1703,34 @@
 
       const clubRaw    = get(idx.club);
       const club       = normalizeClub(clubRaw);
+
+      // [NUEVO 2026-10-16] Tabla de incidencias de CH: se arma aparte de
+      // "respuestas" porque las solicitudes capturadas directo en el Sheet
+      // pueden venir sin sucursal/mes/embajador (y no deben contar en los
+      // porcentajes de cumplimiento), pero sí deben aparecer en la tabla.
+      {
+        const tipoReporteI = cleanText(get(idx.comentarios));
+        const explicaI     = cleanText(get(idx.explicaIncidencia));
+        const comentariosI = explicaI || tipoReporteI;
+        const tipoSolicitada = cleanText(get(idx.tipoSolicitada));
+        const cantidadSolicitada = cleanText(get(idx.cantidadSolicitada));
+        const foto = cleanText(get(idx.foto));
+        const rolI = cleanText(getFirst(idx.rolCols));
+        if (rolI !== "Caja" && (isRelevantComment(comentariosI) || tipoSolicitada || cantidadSolicitada || foto)) {
+          const fechaI = parseFechaSheet_(getDate(idx.timestamp));
+          incidencias.push({
+            commentId: "row" + gvizIndex, gvizRowIndex: gvizIndex,
+            club, mes: normalizeMonth(get(idx.mes)) || (fechaI instanceof Date ? MESES_ES_[fechaI.getMonth()] : ""),
+            embajador: cleanText(getFirst(idx.embajadorCols)),
+            colaborador: cleanText(getFirst(idx.colaboradorCols)),
+            rol: rolI, area: cleanText(get(idx.area)) || (rolI ? getArea(rolI) : ""),
+            turno: normalizeShift(getFirst(idx.turnoCols)),
+            comentarios: comentariosI, tipoReporteSheet: tipoReporteI,
+            tipoSolicitada, cantidadSolicitada, foto, fecha: fechaI
+          });
+        }
+      }
+
       // [FIX] normalizeClub() es una lista blanca fija de 4 nombres; antes,
       // una fila con un club nuevo o renombrado (no reconocido) se descartaba
       // aquí sin dejar ningún rastro salvo en el caso extremo de que TODAS
@@ -1667,8 +1738,7 @@
       // para poder avisar aunque solo se pierdan algunas filas.
       if (!club) { droppedNoClub++; if (clubRaw) unknownClubValues.add(clubRaw); continue; }
 
-      const emb1 = get(idx.emb1), emb2 = get(idx.emb2), emb3 = get(idx.emb3);
-      const embajador  = cleanText(emb1 || emb2 || emb3);
+      const embajador  = cleanText(getFirst(idx.embajadorCols));
       const colaborador= cleanText(getFirst(idx.colaboradorCols));
       const rol        = cleanText(getFirst(idx.rolCols));
       const turno      = normalizeShift(getFirst(idx.turnoCols));
@@ -1790,9 +1860,10 @@
     keepOrFill("filterShift",    ["Todos",...unique(respuestas.map(d=>d.turno)).sort()]);
     keepOrFillMulti("commentClub", CLUBS); // [FIX] ahora permite elegir varias sucursales
     keepOrFillMulti("commentMonth", MONTHS); // ahora permite elegir varios meses
-    const comRows = respuestas.filter(r=>isRelevantComment(r.comentarios));
+    const comRows = incidencias;
     keepOrFill("commentRole",  ["Todos",...unique(comRows.map(d=>d.rol)).sort()]);
     keepOrFill("commentShift", ["Todos",...unique(comRows.map(d=>d.turno)).sort()]);
+    keepOrFill("commentArea",  ["Todos",...unique(comRows.map(d=>d.area)).sort()]);
     keepOrFillMulti("commentTipo", TIPOS_INCIDENCIA); // [FIX] ahora permite elegir varios tipos
     keepOrFill("avanceMonth",  ["Todos",...MONTHS]);
     keepOrFill("avanceClub",   ["Todos",...CLUBS]);
@@ -2532,6 +2603,53 @@
     renderComments();
   }
 
+  // [NUEVO 2026-10-16] Estado de cada incidencia: "Cerrado" = tiene fecha de
+  // resolución (igual que el antiguo "Atendido por CH"); "Sin inventario" se
+  // guarda como marca al inicio de la nota CH (el backend actual solo guarda
+  // fecha/tipo/nota/oculto, así se comparte entre computadoras sin cambiarlo);
+  // todo lo demás es "En proceso".
+  const ESTADOS_INCIDENCIA = ["En proceso", "Sin inventario", "Cerrado"];
+  const MARCA_SIN_INVENTARIO = "[SIN INVENTARIO]";
+  function notaSinMarca_(nota) {
+    const n = String(nota || "");
+    return n.startsWith(MARCA_SIN_INVENTARIO) ? n.slice(MARCA_SIN_INVENTARIO.length).trim() : n;
+  }
+  function getEstadoIncidencia_(id) {
+    const state = comentStates[id] || {};
+    if (state.resolved && state.resolvedDate) return "Cerrado";
+    if (String(state.nota || "").startsWith(MARCA_SIN_INVENTARIO)) return "Sin inventario";
+    return "En proceso";
+  }
+
+  // Categoría efectiva de una incidencia: lo que CH haya editado manualmente,
+  // o la clasificación del Sheet; las solicitudes de prenda sin clasificación
+  // cuentan como "Reposición de uniforme".
+  function tipoEfectivoIncidencia_(item) {
+    const state = comentStates[item.commentId] || {};
+    return state.tipo || item.tipoReporteSheet || (item.tipoSolicitada ? "Reposición de uniforme" : "");
+  }
+
+  function categoriaIncidencia_(item) {
+    const efectivo = tipoEfectivoIncidencia_(item);
+    if (!efectivo) return "";
+    const { select } = matchTipoIncidencia_(efectivo);
+    return select || "Otro";
+  }
+
+  // Liga(s) de "Agregar fotografía": el Form guarda una o varias URLs de Drive
+  // separadas por coma. Se muestra miniatura si es de Drive, si no, liga.
+  function renderFotos_(foto) {
+    const urls = String(foto || "").split(/[,\s]+/).filter(u => /^https?:\/\//i.test(u));
+    if (!urls.length) return foto ? escapeHtml(foto) : `<span class="inc-muted">—</span>`;
+    return urls.map((u, i) => {
+      const m = u.match(/[?&]id=([\w-]+)/) || u.match(/\/d\/([\w-]+)/);
+      const thumb = m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w120` : "";
+      return `<a class="inc-foto" href="${escapeHtml(u)}" target="_blank" rel="noopener" title="Ver fotografía">${
+        thumb ? `<img src="${thumb}" alt="Foto ${i+1}" loading="lazy" onerror="this.replaceWith('Ver foto')">` : "Ver foto"
+      }</a>`;
+    }).join("");
+  }
+
   function renderComments() {
     const panel = document.getElementById("commentsPanel");
     if (!panel || panel.classList.contains("hidden")) return;
@@ -2540,299 +2658,299 @@
     const months = getSelectedValues("commentMonth"); // multi-selección
     const role  = document.getElementById("commentRole").value  || "Todos";
     const shift = document.getElementById("commentShift").value || "Todos";
+    const area  = document.getElementById("commentArea").value  || "Todos";
     const tiposFiltro = getSelectedValues("commentTipo"); // [FIX] ahora es multi-selección
 
-    // Categoría efectiva de un comentario: lo que CH haya editado manualmente,
-    // o si no, la clasificación que trae el Sheet.
-    const categoriaEfectiva = (item) => {
-      const state = comentStates[item.commentId] || {};
-      const efectivo = state.tipo || item.tipoReporteSheet || "";
-      if (!efectivo) return "";
-      const { select } = matchTipoIncidencia_(efectivo);
-      return select || "Otro";
-    };
+    const categoriaEfectiva = categoriaIncidencia_;
 
-    // [MODIFICADO 2026-07-02] "base" = todo lo que cumple los filtros de
-    // arriba (club/mes/rol/turno/tipo), antes de separar por pestaña
-    // pendientes/resueltos/todos — se usa para el resumen de incidencias.
-    const base = respuestas.filter(item =>
+    // "base" = todo lo que cumple los filtros de arriba (club/mes/rol/turno/
+    // tipo), antes de separar por pestaña de estado — se usa para el resumen.
+    const base = incidencias.filter(item =>
       (!clubs.length || clubs.includes(item.club)) &&
       (!months.length || months.includes(item.mes)) &&
       (role  ==="Todos" || item.rol   ===role)  &&
       (shift ==="Todos" || item.turno ===shift) &&
+      (area  ==="Todos" || item.area  ===area)  &&
       (!tiposFiltro.length || tiposFiltro.includes(categoriaEfectiva(item))) &&
-      isRelevantComment(item.comentarios) &&
       !hiddenComments[item.commentId] // [NUEVO] (3) Botón "Ocultar de la vista"
     );
 
     renderResumenIncidencias_(base);
 
-    // Filter by tab
-    let rows = base;
-    if (activeTab === "pendientes") {
-      rows = rows.filter(r => !comentStates[r.commentId]?.resolved);
-    } else if (activeTab === "resueltos") {
-      rows = rows.filter(r => !!comentStates[r.commentId]?.resolved);
-    }
+    // Pestañas por estado; las más recientes primero.
+    const rows = base
+      .filter(r => activeTab === "todos" || getEstadoIncidencia_(r.commentId) === activeTab)
+      .slice().reverse();
 
     const container = document.getElementById("commentsContainer");
     if (!rows.length) {
-      container.innerHTML = `<div class="empty">Sin comentarios para esta selección.</div>`;
+      container.innerHTML = `<div class="empty">Sin incidencias para esta selección.</div>`;
       return;
     }
 
-    container.innerHTML = rows.map(r => {
-      const state       = comentStates[r.commentId] || {};
-      const isResolved  = !!state.resolved;
-      const resolvedDate= state.resolvedDate || "";
-      // [MODIFICADO 2026-07-02] Si CH ya editó manualmente el tipo (state.tipo),
-      // eso manda. Si no, se usa por defecto la clasificación que viene del
-      // Google Sheet (columna R), pero sigue siendo editable desde el select.
-      const tipoEfectivo = state.tipo || r.tipoReporteSheet || "";
-      const { select: tipoSelect, custom: tipoCustom } = matchTipoIncidencia_(tipoEfectivo);
-      // [NUEVO] Nota libre que escribe Capital Humano sobre cómo se atendió.
-      const notaCH      = state.nota || "";
-      // [MODIFICADO] (3) el checkbox solo puede habilitarse si ya hay fecha
-      const canCheck    = !!resolvedDate;
+    const estadoClase = { "En proceso": "proceso", "Sin inventario": "inventario", "Cerrado": "cerrado" };
+    const dash = `<span class="inc-muted">—</span>`;
+    const txt = (v) => v ? escapeHtml(v) : dash;
 
-      // Format fecha del comentario
-      let fechaStr = "—";
+    // Select compacto para reclasificar el tipo (tabla "Otras incidencias").
+    const tipoSelectHtml = (r, tipoIncidencia) => {
+      const { select, custom } = matchTipoIncidencia_(tipoIncidencia);
+      const opts = ["", ...TIPOS_INCIDENCIA].map(t =>
+        `<option value="${t}" ${t===select?"selected":""}>${t === "Otro" && custom ? escapeHtml("Otro: " + custom) : (t || "Sin tipo")}</option>`).join("");
+      return `<select class="inc-tipo" onchange="setTipoIncidencia('${r.commentId}', '${r.gvizRowIndex}', this.value)">${opts}</select>`;
+    };
+
+    // conSolicitud = tabla de Reposición de uniforme (con Cantidad y Foto).
+    const fila = (r, conSolicitud) => {
+      const state       = comentStates[r.commentId] || {};
+      const estado      = getEstadoIncidencia_(r.commentId);
+      const resolvedDate= state.resolvedDate || "";
+      const notaCH      = notaSinMarca_(state.nota);
+
+      let fechaStr = "";
       if (r.fecha instanceof Date && !isNaN(r.fecha)) {
         fechaStr = r.fecha.toLocaleDateString("es-MX", {day:"2-digit",month:"short",year:"numeric"});
       } else if (typeof r.fecha === "string" && r.fecha) {
         fechaStr = r.fecha;
       }
 
-      // Days elapsed
-      // [FIX] Antes exigía que además de poner la fecha, se marcara aparte la
-      // casilla "Atendido por CH" para que se calculara el tiempo de
-      // resolución. Ahora basta con capturar la fecha.
-      // [NUEVO] Si la fecha de resolución queda ANTES del registro (típico
-      // error de captura, p.ej. un año mal tecleado), se avisa en vez de
-      // mostrar un número de días negativo sin sentido.
-      let daysHtml = "";
-      // [FIX] Antes esto solo aplicaba si r.fecha ya era un objeto Date real;
-      // si llegaba como texto (pasa según el formato que mande gviz), no se
-      // fijaba ningún mínimo y el selector de fecha dejaba "navegar" a
-      // cualquier año pasado sin límite — de ahí que se pudiera terminar
-      // eligiendo, por accidente, una fecha de resolución de otro año. Ahora
-      // se intenta interpretar también el texto, para acotar el mínimo casi
-      // siempre.
+      // Tiempo de resolución (solo cerradas): fecha de cierre - fecha del
+      // registro. Si el cierre queda ANTES del registro (error de captura) se
+      // avisa en vez de mostrar un número negativo.
       const fechaRegistro = (r.fecha instanceof Date && !isNaN(r.fecha))
         ? r.fecha
         : (typeof r.fecha === "string" && r.fecha && !isNaN(new Date(r.fecha)) ? new Date(r.fecha) : null);
-      let minResolucion = "";
-      if (fechaRegistro) {
-        minResolucion = toYMD_(fechaRegistro);
-
-        if (resolvedDate) {
-          const rd = new Date(resolvedDate + "T00:00:00");
-          const diff = Math.round((rd - fechaRegistro) / (1000*60*60*24));
-          if (diff < 0) {
-            daysHtml = `<span class="days-badge overdue" title="La fecha de resolución (${resolvedDate}) es anterior a la fecha del registro (${fechaStr}). Revisa el año/fecha capturados.">Fecha inválida</span>`;
-          } else {
-            const cls = diff > 14 ? "overdue" : "";
-            daysHtml = `<span class="days-badge ${cls}">${formatDuracion_(diff)} de resolución</span>`;
-          }
+      const minResolucion = fechaRegistro ? toYMD_(fechaRegistro) : "";
+      let tiempoHtml = dash;
+      if (estado === "Cerrado") {
+        if (!fechaRegistro) {
+          tiempoHtml = `<span class="inc-muted" title="El registro no tiene fecha en el Sheet">Sin fecha de registro</span>`;
+        } else {
+          const diff = Math.round((new Date(resolvedDate + "T00:00:00") - fechaRegistro) / (1000*60*60*24));
+          tiempoHtml = diff < 0
+            ? `<span class="days-badge overdue" title="La fecha de cierre es anterior a la fecha del registro (${fechaStr}). Revisa el año/fecha capturados.">Fecha inválida</span>`
+            : `<span class="days-badge ${diff > 14 ? "overdue" : ""}">${formatDuracion_(diff)}</span>`;
         }
       }
+      const fechaCierreHtml = estado === "Cerrado"
+        ? `<input class="inc-fecha" type="date" value="${resolvedDate}" title="Fecha de cierre"
+            ${minResolucion ? `min="${minResolucion}"` : ""} max="${toYMD_(new Date())}"
+            onchange="setResolvedDate('${r.commentId}', '${r.gvizRowIndex}', this.value)" />`
+        : dash;
 
-      const tipoOptions = ["", ...TIPOS_INCIDENCIA].map(t =>
-        `<option value="${t}" ${t===tipoSelect?"selected":""}>${t || "Tipo de incidencia..."}</option>`
-      ).join("");
+      const tipoIncidencia = tipoEfectivoIncidencia_(r);
+      const detalle = r.comentarios !== tipoIncidencia ? r.comentarios : "";
+      const estadoOptions = ESTADOS_INCIDENCIA.map(e =>
+        `<option value="${e}" ${e===estado?"selected":""}>${e}</option>`).join("");
 
       return `
-        <div class="comment-row${isResolved?" resolved":""}" id="cr_${r.commentId}">
-          <div class="comment-meta">
-            <span><strong>Fecha:</strong> ${fechaStr}</span>
-            <span><strong>Club:</strong> ${escapeHtml(r.club)}</span>
-            <span><strong>Mes:</strong> ${escapeHtml(r.mes)}</span>
-            <span><strong>Embajador:</strong> ${escapeHtml(r.embajador)}</span>
-            <span><strong>Evaluado:</strong> ${escapeHtml(r.colaborador)}</span>
-            <span><strong>Rol:</strong> ${escapeHtml(r.rol)}</span>
-            <span><strong>Turno:</strong> ${escapeHtml(r.turno)}</span>
-          </div>
-          <div class="comment-body">${escapeHtml(r.comentarios)}</div>
-          <div class="comment-actions">
-            <label title="${canCheck?'':'Primero ingresa la fecha de resolución'}">
-              <input type="checkbox" onchange="toggleResolved('${r.commentId}', this.checked)"
-                ${isResolved?"checked":""} ${!canCheck?"disabled":""}>
-              Atendido por CH
-            </label>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <label style="font-weight:400;color:#5a7080;">Fecha resolución:</label>
-              <input type="date" value="${resolvedDate}"
-                ${minResolucion ? `min="${minResolucion}"` : ""} max="${toYMD_(new Date())}"
-                onchange="setResolvedDate('${r.commentId}', '${r.gvizRowIndex}', this.value)" />
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <label style="font-weight:400;color:#5a7080;">Tipo:</label>
-              <select onchange="setTipoIncidencia('${r.commentId}', '${r.gvizRowIndex}', this.value)">
-                ${tipoOptions}
-              </select>
-              <input type="text" placeholder="Especifica el tipo..."
-                value="${escapeHtml(tipoCustom)}"
-                style="display:${tipoSelect==='Otro'?'inline-block':'none'};width:160px;
-                  border:1px solid #d9e3ea;border-radius:8px;padding:6px 8px;font-size:13px;"
-                onchange="setTipoIncidenciaOtro('${r.commentId}', '${r.gvizRowIndex}', this.value)" />
-            </div>
-            <div style="display:flex;align-items:flex-start;gap:8px;flex:1 1 260px;min-width:220px;">
-              <label style="font-weight:400;color:#5a7080;white-space:nowrap;padding-top:6px;">Nota CH:</label>
-              <textarea rows="1" placeholder="Comentario sobre cómo se atendió..."
-                style="flex:1;border:1px solid #d9e3ea;border-radius:8px;padding:6px 8px;
-                  font-size:13px;font-family:inherit;resize:vertical;"
-                onchange="setNotaCH('${r.commentId}', '${r.gvizRowIndex}', this.value)">${escapeHtml(notaCH)}</textarea>
-            </div>
-            ${daysHtml}
-            <button type="button" class="hide-comment-btn" onclick="hideComment('${r.commentId}', '${r.gvizRowIndex}')"
-              style="margin-left:auto;background:none;border:1px solid #c5d4de;border-radius:6px;
-              padding:4px 10px;font-size:12px;color:#5a7080;cursor:pointer;">
-              Eliminar comentario
-            </button>
-          </div>
-        </div>`;
-    }).join("");
+        <tr class="inc-row inc-${estadoClase[estado]}" id="cr_${r.commentId}">
+          <td>${txt(r.mes)}</td>
+          <td><div class="inc-name">${txt(r.colaborador)}</div>
+            ${fechaStr ? `<div class="inc-sub">${escapeHtml(fechaStr)}</div>` : ""}</td>
+          <td>${txt(r.turno)}</td>
+          <td>${txt(r.embajador)}</td>
+          ${conSolicitud ? `<td class="inc-num">${txt(r.cantidadSolicitada)}</td>` : ""}
+          <td>${conSolicitud ? `<div class="inc-name">${txt(r.tipoSolicitada || tipoIncidencia)}</div>` : tipoSelectHtml(r, tipoIncidencia)}
+            ${detalle ? `<div class="inc-sub inc-clamp" title="${escapeHtml(detalle)}">${escapeHtml(detalle)}</div>` : ""}</td>
+          <td>${txt(r.rol)}</td>
+          <td>${r.club ? escapeHtml(r.club) : `<span class="inc-muted">Sin sucursal</span>`}</td>
+          ${conSolicitud ? `<td>${renderFotos_(r.foto)}</td>` : ""}
+          <td><select class="inc-estado" onchange="setEstadoIncidencia('${r.commentId}', '${r.gvizRowIndex}', this.value)">${estadoOptions}</select></td>
+          <td>${fechaCierreHtml}</td>
+          <td>${tiempoHtml}</td>
+          <td><textarea class="inc-nota" rows="2" placeholder="Agregar comentario..."
+                onchange="setNotaCH('${r.commentId}', '${r.gvizRowIndex}', this.value)">${escapeHtml(notaCH)}</textarea></td>
+          <td><button type="button" class="inc-del" title="Eliminar incidencia"
+                onclick="hideComment('${r.commentId}', '${r.gvizRowIndex}')">✕</button></td>
+        </tr>`;
+    };
+
+    // Dos tablas: Reposición de uniforme (con cantidad solicitada y foto) y
+    // el resto de las incidencias (sin esas dos columnas).
+    const tabla = (titulo, lista, conSolicitud) => !lista.length ? "" : `
+      <h3 class="inc-table-title">${titulo} <span>${lista.length}</span></h3>
+      <div class="table-wrap inc-table-wrap">
+        <table class="inc-table${conSolicitud ? "" : " inc-table-otras"}">
+          <thead><tr>
+            <th>Mes</th><th>Nombre</th><th>Turno</th><th>Embajador</th>
+            ${conSolicitud ? "<th>Cant. solicitada</th>" : ""}<th>Tipo</th>
+            <th>Rol</th><th>Sucursal</th>${conSolicitud ? "<th>Foto</th>" : ""}
+            <th>Estado</th><th>Fecha de cierre</th><th>Tiempo de resolución</th><th>Comentarios</th><th></th>
+          </tr></thead>
+          <tbody>${lista.map(r => fila(r, conSolicitud)).join("")}</tbody>
+        </table>
+      </div>`;
+    const esReposicion = (r) => categoriaEfectiva(r) === "Reposición de uniforme";
+    const scrollPrevio = [...container.querySelectorAll(".inc-table-wrap")].map(w => [w.scrollTop, w.scrollLeft]);
+    container.innerHTML =
+      tabla("Reposición de uniforme", rows.filter(esReposicion), true) +
+      tabla("Otras incidencias", rows.filter(r => !esReposicion(r)), false);
+    container.querySelectorAll(".inc-table-wrap").forEach((w, i) => {
+      if (scrollPrevio[i]) [w.scrollTop, w.scrollLeft] = scrollPrevio[i];
+    });
   }
 
-  // [MODIFICADO 2026-07-02] Resumen simple: cuántas incidencias cumplen los
-  // filtros actuales (club/mes/rol/turno/tipo) y cuántas de esas ya están
-  // atendidas por CH. Reemplaza la tabla de desglose por tipo/mes, que no
-  // aportaba valor.
+  // Resumen: cuántas incidencias cumplen los filtros actuales y cómo se
+  // reparten por estado, más el promedio de días hasta el cierre.
   function renderResumenIncidencias_(base) {
     const el = document.getElementById("tipoIncidenciaSummary");
     if (!el) return;
 
     const total = base.length;
-    const atendidas = base.filter(r => !!comentStates[r.commentId]?.resolved).length;
-    const pendientes = total - atendidas;
-    const pct = total > 0 ? Math.round((atendidas / total) * 100) : 0;
+    const conteo = { "En proceso": 0, "Sin inventario": 0, "Cerrado": 0 };
+    base.forEach(r => { conteo[getEstadoIncidencia_(r.commentId)]++; });
+    const pct = total > 0 ? Math.round((conteo["Cerrado"] / total) * 100) : 0;
 
-    // [NUEVO] Promedio de días de resolución: solo sobre incidencias
-    // atendidas con fecha de resolución válida (posterior o igual al
-    // registro) — las inválidas (ver "Fecha inválida" en cada tarjeta)
-    // se excluyen para no descuadrar el promedio.
+    // Promedio de días de resolución: solo sobre cerradas con fecha válida
+    // (posterior o igual al registro).
     const diasValidos = base.reduce((acc, r) => {
-      const state = comentStates[r.commentId];
-      if (!state || !state.resolved || !state.resolvedDate) return acc;
+      if (getEstadoIncidencia_(r.commentId) !== "Cerrado") return acc;
       if (!(r.fecha instanceof Date) || isNaN(r.fecha)) return acc;
-      const rd = new Date(state.resolvedDate + "T00:00:00");
+      const rd = new Date(comentStates[r.commentId].resolvedDate + "T00:00:00");
       const diff = Math.round((rd - r.fecha) / (1000*60*60*24));
-      if (diff < 0) return acc;
-      acc.push(diff);
+      if (diff >= 0) acc.push(diff);
       return acc;
     }, []);
-    const promedioDias = diasValidos.length
-      ? Math.round(diasValidos.reduce((a,b) => a+b, 0) / diasValidos.length)
-      : null;
-    const promedioHtml = promedioDias === null
-      ? "—"
-      : formatDuracion_(promedioDias);
+    const promedioHtml = diasValidos.length
+      ? formatDuracion_(Math.round(diasValidos.reduce((a,b) => a+b, 0) / diasValidos.length))
+      : "—";
 
     if (!total) {
+      if (incEstadoChart) { incEstadoChart.destroy(); incEstadoChart = null; }
       el.innerHTML = `<div class="empty" style="margin-bottom:16px;">No hay incidencias para la selección actual.</div>`;
       return;
     }
 
+    const card = (label, value, color, extra = "") => `
+        <div style="flex:1;min-width:140px;background:#fff;border:1px solid #e0e8ee;border-radius:10px;padding:14px 16px;">
+          <div style="font-size:12px;color:#5a7080;font-weight:700;margin-bottom:6px;">${label}</div>
+          <div style="font-size:24px;font-weight:800;color:${color};">${value}</div>${extra}
+        </div>`;
+    // Dona: cuántas incidencias hay en cada estatus (mismos colores que los
+    // botones de Estado de la tabla).
+    const coloresEstado = { "En proceso": "#d99a16", "Sin inventario": "#c94032", "Cerrado": "#3e700c" };
+    const leyenda = ESTADOS_INCIDENCIA.map(e => {
+      const p = Math.round((conteo[e] / total) * 100);
+      return `<div><i style="background:${coloresEstado[e]}"></i>${e}<b>${conteo[e]} <span class="inc-muted">(${p}%)</span></b></div>`;
+    }).join("");
+
     el.innerHTML = `
-      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
-        <div style="flex:1;min-width:140px;background:#fff;border:1px solid #e0e8ee;border-radius:10px;padding:14px 16px;">
-          <div style="font-size:12px;color:#5a7080;font-weight:700;margin-bottom:6px;">Incidencias</div>
-          <div style="font-size:24px;font-weight:800;color:#102033;">${total}</div>
+      <div class="inc-resumen">
+      <div class="inc-resumen-cards">
+        ${card("Incidencias", total, "#102033")}
+        ${card("En proceso", conteo["En proceso"], "#d99a16")}
+        ${card("Sin inventario", conteo["Sin inventario"], "#c94032")}
+        ${card("Cerradas", `${conteo["Cerrado"]} <span style="font-size:14px;font-weight:700;color:#5a7080;">(${pct}%)</span>`, "#3e700c")}
+        ${card("Promedio de resolución", promedioHtml, "#007882",
+          diasValidos.length ? `<div style="font-size:11px;color:#5a7080;margin-top:2px;">sobre ${diasValidos.length} incidencia${diasValidos.length!==1?'s':''} con fecha válida</div>` : "")}
+      </div>
+      <div class="inc-dona-card">
+        <div style="font-size:12px;color:#5a7080;font-weight:700;margin-bottom:10px;">Incidencias por estatus</div>
+        <div class="inc-dona-body">
+          <div class="inc-dona-wrap"><canvas id="incEstadoCanvas"></canvas></div>
+          <div class="inc-dona-legend">${leyenda}</div>
         </div>
-        <div style="flex:1;min-width:140px;background:#fff;border:1px solid #e0e8ee;border-radius:10px;padding:14px 16px;">
-          <div style="font-size:12px;color:#5a7080;font-weight:700;margin-bottom:6px;">Atendidas</div>
-          <div style="font-size:24px;font-weight:800;color:#3e700c;">${atendidas} <span style="font-size:14px;font-weight:700;color:#5a7080;">(${pct}%)</span></div>
-        </div>
-        <div style="flex:1;min-width:140px;background:#fff;border:1px solid #e0e8ee;border-radius:10px;padding:14px 16px;">
-          <div style="font-size:12px;color:#5a7080;font-weight:700;margin-bottom:6px;">Pendientes</div>
-          <div style="font-size:24px;font-weight:800;color:#c94032;">${pendientes}</div>
-        </div>
-        <div style="flex:1;min-width:140px;background:#fff;border:1px solid #e0e8ee;border-radius:10px;padding:14px 16px;">
-          <div style="font-size:12px;color:#5a7080;font-weight:700;margin-bottom:6px;">Promedio de resolución</div>
-          <div style="font-size:24px;font-weight:800;color:#007882;">${promedioHtml}</div>
-          ${diasValidos.length ? `<div style="font-size:11px;color:#5a7080;margin-top:2px;">sobre ${diasValidos.length} incidencia${diasValidos.length!==1?'s':''} con fecha válida</div>` : ""}
-        </div>
+      </div>
       </div>`;
+
+    if (incEstadoChart) incEstadoChart.destroy();
+    incEstadoChart = new Chart(document.getElementById("incEstadoCanvas").getContext("2d"), {
+      type: "doughnut",
+      data: { labels: ESTADOS_INCIDENCIA, datasets: [{ data: ESTADOS_INCIDENCIA.map(e => conteo[e]),
+        backgroundColor: ESTADOS_INCIDENCIA.map(e => coloresEstado[e]), borderWidth: 2, borderColor: "#fff" }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: "58%", animation: false,
+        plugins: {
+          legend: { display: false },
+          datalabels: { color: "#fff", font: { weight: "700", size: 10 },
+            formatter: (v) => { const p = Math.round((v / total) * 100); return p >= 8 ? p + "%" : ""; } },
+          tooltip: { callbacks: { label: c => `${c.label}: ${c.parsed} (${Math.round((c.parsed / total) * 100)}%)` } }
+        }
+      }
+    });
   }
 
-  // [MODIFICADO] (3) El checkbox solo puede marcarse una vez que ya existe una
-  // fecha de resolución (ver "canCheck" en renderComments / disabled del input).
-  async function toggleResolved(id, checked) {
+  // [NUEVO 2026-10-16] Cambia el estado desde la tabla. "Cerrado" pone la
+  // fecha de hoy como fecha de cierre (editable después); los otros dos
+  // estados la quitan. "Sin inventario" se marca al inicio de la nota.
+  async function setEstadoIncidencia(id, gvizRowIndex, estado) {
     if (!comentStates[id]) comentStates[id] = {};
-    comentStates[id].resolved = checked;
+    const st = comentStates[id];
+    const nota = notaSinMarca_(st.nota);
+    if (estado === "Cerrado") {
+      st.resolvedDate = st.resolvedDate || toYMD_(new Date());
+      st.resolved = true;
+      st.nota = nota;
+    } else {
+      st.resolvedDate = "";
+      st.resolved = false;
+      st.nota = estado === "Sin inventario" ? (MARCA_SIN_INVENTARIO + (nota ? " " + nota : "")) : nota;
+    }
     await saveCommentStates();
     renderComments();
+    await persistirIncidencia_(id, gvizRowIndex);
   }
 
-  // [MODIFICADO] (3) Al capturar la fecha: habilita el checkbox y persiste en
-  // Excel (columna nueva en la hoja de origen) vía el backend.
-  // [FIX] Antes, si CH solo ponía la fecha y nunca tocaba el select de
-  // "Tipo" (que ya mostraba por defecto la clasificación de la columna R),
-  // ese tipo nunca se mandaba a guardar porque el onchange del select no se
-  // disparaba. Ahora se usa como respaldo el tipo por defecto (tipoReporteSheet)
-  // si CH no eligió uno manualmente.
+  // Corrige la fecha de cierre de una incidencia cerrada. Borrarla la regresa
+  // a "En proceso".
   async function setResolvedDate(id, gvizRowIndex, date) {
     if (!comentStates[id]) comentStates[id] = {};
     comentStates[id].resolvedDate = date;
-    // [FIX] Se quitó el "marcar atendido automáticamente al poner fecha":
-    // como la pestaña activa suele ser "Pendientes", esto hacía que la fila
-    // desapareciera de la lista en el instante mismo de escribir la fecha —
-    // antes de poder revisar el Tipo/Nota, o de corregir la fecha si estaba
-    // mal. Ahora poner (o corregir) la fecha solo habilita la casilla
-    // "Atendido por CH"; la fila se mueve a Resueltos únicamente cuando esa
-    // casilla se marca a propósito.
+    comentStates[id].resolved = !!date;
     await saveCommentStates();
-    const item = respuestas.find(r => r.commentId === id);
-    const tipoEfectivo = comentStates[id].tipo || (item && item.tipoReporteSheet) || "";
-    await persistirResolucion_(gvizRowIndex, date, tipoEfectivo, comentStates[id].nota || "");
     renderComments();
+    await persistirIncidencia_(id, gvizRowIndex);
   }
 
-  // [MODIFICADO 2026-07-02] Clasificación rápida del tipo de incidencia.
-  // Si elige "Otro" no se persiste todavía — se espera a que escriba el texto
-  // en el campo que aparece al lado (ver setTipoIncidenciaOtro). Para el resto
-  // de las categorías fijas, se persiste de inmediato.
+  // Comentario libre de Capital Humano (conserva la marca de "Sin inventario").
+  async function setNotaCH(id, gvizRowIndex, texto) {
+    if (!comentStates[id]) comentStates[id] = {};
+    const limpio = cleanText(texto);
+    comentStates[id].nota = getEstadoIncidencia_(id) === "Sin inventario"
+      ? MARCA_SIN_INVENTARIO + (limpio ? " " + limpio : "")
+      : limpio;
+    await saveCommentStates();
+    await persistirIncidencia_(id, gvizRowIndex);
+  }
+
+  // Los guardados se mandan uno detrás de otro (nunca en paralelo) y cada uno
+  // lee el estado al momento de enviarse, así un cambio de estado y un
+  // comentario hechos casi juntos no pueden llegar en desorden al Sheet.
+  let colaGuardado_ = Promise.resolve();
+  function persistirIncidencia_(id, gvizRowIndex) {
+    colaGuardado_ = colaGuardado_.then(() => {
+      const st = comentStates[id] || {};
+      const item = incidencias.find(r => r.commentId === id);
+      const tipo = item ? tipoEfectivoIncidencia_(item) : (st.tipo || "");
+      return persistirResolucion_(gvizRowIndex, st.resolved ? (st.resolvedDate || "") : "", tipo, st.nota || "");
+    }).catch(err => console.error("Error guardando incidencia:", err));
+    return colaGuardado_;
+  }
+
+  // [RESTAURADO 2026-10-16] Reclasificar el tipo de incidencia desde la tabla
+  // ("Otras incidencias"). Si elige "Otro" pide el texto de la categoría.
   async function setTipoIncidencia(id, gvizRowIndex, tipo) {
     if (!comentStates[id]) comentStates[id] = {};
     if (tipo === "Otro") {
-      renderComments(); // solo muestra el input de texto, sin persistir aún
-      return;
+      const texto = cleanText(prompt("Especifica el tipo de incidencia:", "") || "");
+      tipo = texto || "Otro";
     }
     comentStates[id].tipo = tipo;
     await saveCommentStates();
-    await persistirResolucion_(gvizRowIndex, comentStates[id].resolvedDate || "", tipo, comentStates[id].nota || "");
     renderComments();
+    await persistirIncidencia_(id, gvizRowIndex);
   }
 
-  // [NUEVO 2026-07-02] Persiste la categoría personalizada escrita cuando el
-  // select está en "Otro".
-  async function setTipoIncidenciaOtro(id, gvizRowIndex, texto) {
-    if (!comentStates[id]) comentStates[id] = {};
-    const tipo = cleanText(texto);
-    comentStates[id].tipo = tipo || "Otro";
-    await saveCommentStates();
-    await persistirResolucion_(gvizRowIndex, comentStates[id].resolvedDate || "", comentStates[id].tipo, comentStates[id].nota || "");
-    renderComments();
-  }
-
-  // [NUEVO] Nota libre de Capital Humano sobre cómo se atendió la incidencia.
-  async function setNotaCH(id, gvizRowIndex, texto) {
-    if (!comentStates[id]) comentStates[id] = {};
-    comentStates[id].nota = cleanText(texto);
-    await saveCommentStates();
-    await persistirResolucion_(gvizRowIndex, comentStates[id].resolvedDate || "", comentStates[id].tipo || "", comentStates[id].nota);
-    renderComments();
-  }
-
-  // [MODIFICADO] Escribe fecha de resolución + tipo en la hoja de seguimiento
-  // dedicada ("Seguimiento de Incidencias", separada de las respuestas del
-  // Form) a través del backend, para que no se pierda al recargar. Se manda
-  // también club/colaborador/comentario/timestamp de contexto, tomados de
-  // `respuestas`, solo para que la hoja de seguimiento sea legible — la
-  // llave real sigue siendo gvizRowIndex.
+  // [MODIFICADO] Escribe fecha de resolución + tipo + nota en la hoja de
+  // seguimiento dedicada ("Seguimiento de Incidencias", separada de las
+  // respuestas del Form) a través del backend, para que no se pierda al
+  // recargar. Se manda también club/colaborador/comentario/timestamp de
+  // contexto solo para que la hoja de seguimiento sea legible — la llave
+  // real sigue siendo gvizRowIndex.
   async function persistirResolucion_(gvizRowIndex, fecha, tipo, nota) {
     if (gvizRowIndex === undefined || gvizRowIndex === null || gvizRowIndex === "undefined") return;
-    const item = respuestas.find(r => String(r.gvizRowIndex) === String(gvizRowIndex));
+    const item = incidencias.find(r => String(r.gvizRowIndex) === String(gvizRowIndex));
     const result = await callAppsScript("saveResolution", {
       row: gvizRowIndex,
       fecha: fecha || "",
@@ -2840,7 +2958,7 @@
       nota: nota || "",
       club: item ? item.club : "",
       colaborador: item ? item.colaborador : "",
-      comentario: item ? item.comentarios : "",
+      comentario: item ? (item.comentarios || [item.tipoSolicitada, item.cantidadSolicitada].filter(Boolean).join(" x")) : "",
       timestamp: item && item.fecha ? String(item.fecha) : ""
     });
     if (!result) {
@@ -2941,6 +3059,13 @@
     return String(v||"").trim();
   }
   function cleanText(v) { return String(v||"").trim().replace(/\s+/g," "); }
+  // [NUEVO 2026-10-16] Si el timestamp llega como texto "dd/mm/aaaa hh:mm:ss"
+  // (en vez de "Date(...)"), new Date() no lo entiende; se convierte a Date.
+  function parseFechaSheet_(v) {
+    if (!v || v instanceof Date) return v;
+    const m = String(v).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    return m ? new Date(+m[3], +m[2] - 1, +m[1]) : v;
+  }
   function unique(arr)  { return [...new Set(arr.map(cleanText).filter(Boolean))]; }
 
   // [NUEVO] Formatea una fecha local (evita desfases de zona horaria del
