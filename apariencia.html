@@ -856,6 +856,24 @@
     .gafete-role-row { display:flex; justify-content:space-between; color:var(--text); }
     .gafete-role-row strong { color:var(--muted); font-weight:700; }
     @media (max-width: 640px) { .gafete-modal-body { grid-template-columns: 1fr; } }
+
+    /* [NUEVO 2026-10-28] Lista de colaboradores con calificación baja en un
+       criterio (al dar clic en su tarjeta) y desglose por rol en las
+       tarjetas de "Resultados por área". */
+    .bajos-section { margin-top:18px; }
+    .bajos-section h4 { margin:0 0 8px; font-size:14px; color:var(--text); }
+    .bajos-note { margin:0 0 10px; font-size:12.5px; color:var(--muted); }
+    .bajos-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .bajos-table th { text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.03em;
+      color:var(--muted); font-weight:700; padding:6px 10px; border-bottom:1px solid #e8eef2; }
+    .bajos-table td { padding:7px 10px; border-bottom:1px solid #f0f3f6; color:var(--text); }
+    .bajos-table tr:last-child td { border-bottom:none; }
+    .bajos-table .veces { color:var(--muted); font-weight:700; white-space:nowrap; }
+    .area-roles { width:100%; display:flex; flex-direction:column; gap:4px; margin-top:6px;
+      padding-top:8px; border-top:1px solid #e8eef2; }
+    .area-rol-row { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12.5px; }
+    .area-rol-row span { color:var(--muted); text-align:left; }
+    .area-rol-row strong { white-space:nowrap; }
 </style>
 </head>
 <body>
@@ -1053,6 +1071,21 @@
         <div class="gafete-chart-wrap"><canvas id="gafeteDonutChart"></canvas></div>
         <div id="gafeteMotivosList" class="gafete-motivos-list"></div>
       </div>
+      <div class="bajos-section">
+        <h4>Colaboradores con calificación baja</h4>
+        <div id="gafeteBajosList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- [NUEVO 2026-10-28] Panel: colaboradores con calificación baja en un criterio -->
+  <div id="bajosModalOverlay" class="gafete-modal-overlay hidden" onclick="closeBajosModalOnOverlay(event)">
+    <div class="gafete-modal">
+      <div class="gafete-modal-head">
+        <h3 id="bajosModalTitle">Calificación baja</h3>
+        <button type="button" onclick="closeBajosModal()">✕</button>
+      </div>
+      <div id="bajosModalList"></div>
     </div>
   </div>
 
@@ -2057,6 +2090,7 @@
     renderComments();
     // [NUEVO] (4) si el panel de Gafete está abierto, se actualiza con los filtros vigentes
     if (isGafeteModalOpen()) renderGafeteDonut();
+    if (bajosKeyAbierto) renderBajosModal();
   }
 
   // [FIX] Igual que getLowestCriterion, pero devuelve el más alto Y el más
@@ -2117,6 +2151,18 @@
       const { top, bottom } = getHighLowCriterion(rows);
       const rolTop = getTopRol(rows);
       const rolImg = rolTop && ROL_IMAGENES[rolTop.rol];
+      // [NUEVO 2026-10-28] Calificación general de cada rol del área (con
+      // los filtros vigentes), de mayor a menor.
+      const porRol = {};
+      rows.forEach(r => { if (r.rol) (porRol[r.rol] = porRol[r.rol] || []).push(r); });
+      const roles = Object.keys(porRol)
+        .map(rol => ({ rol, pct: calcGeneral(porRol[rol]).percent, n: porRol[rol].length }))
+        .filter(x => x.pct !== null)
+        .sort((a, b) => b.pct - a.pct || a.rol.localeCompare(b.rol, "es"));
+      const rolesHtml = roles.length ? `<div class="area-roles">${roles.map(x => `
+          <div class="area-rol-row"><span>${escapeHtml(x.rol)}</span>
+          <strong style="color:${stateColor(getState(x.pct, x.n))}">${x.pct}%</strong></div>`).join("")}
+        </div>` : "";
 
       const card = document.createElement("article");
       card.className = "club-card";
@@ -2131,7 +2177,8 @@
         ${rolTop ? `<div class="area-top-rol">
           ${rolImg ? `<img src="${encodeURI(rolImg)}" alt="Uniforme ${escapeHtml(rolTop.rol)}" onerror="this.remove()" />` : ""}
           <p class="club-meta">Rol más alto: <strong>${escapeHtml(rolTop.rol)} (${rolTop.percent}%)</strong></p>
-        </div>` : ""}`;
+        </div>` : ""}
+        ${rolesHtml}`;
       c.appendChild(card);
     });
   }
@@ -2407,12 +2454,17 @@
       const card = document.createElement("article");
       card.className = "criterion-card";
       // [NUEVO] (4) La tarjeta de Gafete es cliqueable: abre el panel de detalle
+      // [MODIFICADO 2026-10-28] Ahora todas las tarjetas son cliqueables: el
+      // resto abre la lista de colaboradores con calificación baja.
       const isGafete = cr.key === "G";
+      card.classList.add("criterion-card-clickable");
+      card.style.cursor = "pointer";
       if (isGafete) {
-        card.classList.add("criterion-card-clickable");
-        card.style.cursor = "pointer";
-        card.title = "Ver desglose de motivos de Gafete";
+        card.title = "Ver desglose de motivos y colaboradores de Gafete";
         card.addEventListener("click", openGafeteModal);
+      } else {
+        card.title = "Ver colaboradores con calificación baja";
+        card.addEventListener("click", () => openBajosModal(cr.key));
       }
       card.innerHTML = `
         <div class="donut" style="background:radial-gradient(circle at center,#fff 0 58%,transparent 59%),
@@ -2438,6 +2490,64 @@
   function isGafeteModalOpen() {
     const el = document.getElementById("gafeteModalOverlay");
     return el && !el.classList.contains("hidden");
+  }
+
+  // ─── [NUEVO 2026-10-28] COLABORADORES CON CALIFICACIÓN BAJA ────────────────
+  // Lista quién sacó 0 en un criterio, con los filtros globales vigentes.
+  // Si se filtra una sola sucursal se omite la columna Sucursal (ya se sabe
+  // cuál es) para ahorrar espacio.
+  let bajosKeyAbierto = null;
+  function openBajosModal(key) {
+    bajosKeyAbierto = key;
+    document.getElementById("bajosModalOverlay").classList.remove("hidden");
+    renderBajosModal();
+  }
+  function closeBajosModal() {
+    bajosKeyAbierto = null;
+    document.getElementById("bajosModalOverlay").classList.add("hidden");
+  }
+  function closeBajosModalOnOverlay(evt) {
+    if (evt.target.id === "bajosModalOverlay") closeBajosModal();
+  }
+  function renderBajosModal() {
+    const cr = CRITERIA.find(c => c.key === bajosKeyAbierto);
+    if (!cr) return;
+    document.getElementById("bajosModalTitle").textContent = "Calificación baja — " + cr.name;
+    renderBajosList(document.getElementById("bajosModalList"), cr.key);
+  }
+  function renderBajosList(el, key) {
+    const filtered = getFilteredData();
+    const clubsSel = getSelectedValues("filterClub");
+    const conSucursal = clubsSel.length !== 1;
+    // Agrupa por colaborador+rol+sucursal: si alguien salió bajo en varias
+    // caminatas aparece una sola vez con el número de veces.
+    const grupos = {};
+    let evaluados = 0;
+    filtered.forEach(r => {
+      const v = r.criterios[key];
+      if (v === 0 || v === 1) evaluados++;
+      if (v !== 0) return;
+      const nombre = r.colaborador || "Sin nombre";
+      const k = [nombre, r.rol, r.club].join("|");
+      if (!grupos[k]) grupos[k] = { nombre, rol: r.rol, club: r.club, veces: 0 };
+      grupos[k].veces++;
+    });
+    const lista = Object.values(grupos).sort((a, b) =>
+      b.veces - a.veces || a.nombre.localeCompare(b.nombre, "es"));
+    if (!lista.length) {
+      el.innerHTML = `<div class="empty">Nadie tuvo calificación baja en este criterio con los filtros seleccionados.</div>`;
+      return;
+    }
+    const totalBajas = lista.reduce((s, x) => s + x.veces, 0);
+    el.innerHTML = `
+      <p class="bajos-note">${totalBajas} de ${evaluados} evaluaciones con calificación baja · ${lista.length} colaborador(es)</p>
+      <table class="bajos-table">
+        <thead><tr><th>Nombre</th><th>Rol</th>${conSucursal ? "<th>Sucursal</th>" : ""}<th>Veces</th></tr></thead>
+        <tbody>${lista.map(x => `
+          <tr><td>${escapeHtml(x.nombre)}</td><td>${escapeHtml(x.rol || "—")}</td>
+          ${conSucursal ? `<td>${escapeHtml(x.club)}</td>` : ""}<td class="veces">${x.veces}</td></tr>`).join("")}
+        </tbody>
+      </table>`;
   }
 
   // Lee los conteos brutos (motivosGafeteData) y calcula el % de cada motivo
@@ -2470,6 +2580,9 @@
       }
     });
     const totalSum = Object.values(totals).reduce((a,b)=>a+b, 0);
+
+    // [NUEVO 2026-10-28] Nombre, rol (y sucursal) de quienes salieron bajo en Gafete.
+    renderBajosList(document.getElementById("gafeteBajosList"), "G");
 
     const listEl = document.getElementById("gafeteMotivosList");
     const colors = ["#007882","#7cd4d2","#9ee1e1","#d99a16","#c94032","#3e700c","#5a7080","#98a2b3"];
