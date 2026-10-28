@@ -1554,11 +1554,17 @@
     // respuestas y se sobreescribe su estado local según lo que diga (o no
     // diga) el Excel, así una fila sin resolución real siempre queda
     // desmarcada, sin importar lo que haya quedado guardado antes.
+    // [FIX 2026-10-28] La columna "FilaOriginal" de la hoja de seguimiento
+    // ahora guarda la llave fija (trackKey). Los registros viejos por
+    // posición (< TRACK_KEY_BASE) se ignoran: ya se migraron a llave fija y
+    // por posición apuntaban a filas equivocadas.
     const byRowIndex = {};
-    (resolucionesBackend || []).forEach(res => { byRowIndex[res.gvizRowIndex] = res; });
+    (resolucionesBackend || []).forEach(res => {
+      if (Number(res.gvizRowIndex) >= TRACK_KEY_BASE) byRowIndex[res.gvizRowIndex] = res;
+    });
 
     [...respuestas, ...incidencias].forEach(r => {
-      const res = byRowIndex[r.gvizRowIndex];
+      const res = byRowIndex[r.trackKey];
       comentStates[r.commentId] = {
         resolved: !!(res && res.fecha),
         resolvedDate: (res && res.fecha) || "",
@@ -1664,8 +1670,34 @@
     return idx;
   }
 
+  // [FIX 2026-10-28] Llave fija de seguimiento por fila. Antes el estado
+  // (cerrado / sin inventario / nota) se guardaba por POSICIÓN de la fila
+  // (gvizRowIndex). Las solicitudes capturadas a mano al final del Sheet se
+  // recorren una fila hacia abajo cada vez que llega una respuesta nueva del
+  // Form, así que su estado se quedaba en la fila que ahora ocupa ese lugar
+  // (otro colaborador) y la incidencia volvía a "En proceso"; al volver a
+  // marcarla se creaba otro registro en "Seguimiento de Incidencias" (p.ej.
+  // Zab quedó guardado 3 veces). Ahora la llave se calcula del CONTENIDO de
+  // la fila (marca temporal + colaborador + prenda solicitada + n.º de
+  // repetición), así no cambia aunque la fila se mueva. Es un número
+  // (>= 10,000,000,000, para no confundirse con los índices viejos) porque
+  // el backend solo acepta números en "row".
+  const TRACK_KEY_BASE = 10000000000;
+  function trackKeyBase_(parts) {
+    const firma = parts.map(p => String(p || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .toLowerCase().replace(/\s+/g, " ").trim().replace(/[^\x20-\x7e]/g, "")).join("|");
+    let h = 0x811c9dc5; // FNV-1a 32 bits
+    for (let i = 0; i < firma.length; i++) {
+      h ^= firma.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return { firma, hash: h };
+  }
+
   function parseGvizTable(table) {
     const rows = [];
+    const firmasVistas = {}; // firma -> veces vista (filas idénticas)
+    const llavesUsadas = {};
     const idx = resolveGvizColumns_(table); // [MODIFICADO] resolución dinámica de columnas
     let gvizIndex = -1; // [NUEVO] (3) índice 0-based dentro de table.rows, para persistencia
     let droppedNoClub = 0, droppedNoMes = 0;
@@ -1704,6 +1736,17 @@
       const clubRaw    = get(idx.club);
       const club       = normalizeClub(clubRaw);
 
+      const { firma, hash } = trackKeyBase_([
+        row.c && row.c[idx.timestamp] && row.c[idx.timestamp].v,
+        getFirst(idx.colaboradorCols), get(idx.tipoSolicitada)
+      ]);
+      const rep = firmasVistas[firma] = (firmasVistas[firma] || 0) + 1;
+      let trackKey = TRACK_KEY_BASE + (rep === 1 ? hash : trackKeyBase_([firma, rep]).hash);
+      if (llavesUsadas[trackKey] !== undefined) {
+        console.warn(`[seguimiento] Llave repetida en filas ${llavesUsadas[trackKey]} y ${gvizIndex}.`);
+      }
+      llavesUsadas[trackKey] = gvizIndex;
+
       // [NUEVO 2026-10-16] Tabla de incidencias de CH: se arma aparte de
       // "respuestas" porque las solicitudes capturadas directo en el Sheet
       // pueden venir sin sucursal/mes/embajador (y no deben contar en los
@@ -1719,7 +1762,7 @@
         if (rolI !== "Caja" && (isRelevantComment(comentariosI) || tipoSolicitada || cantidadSolicitada || foto)) {
           const fechaI = parseFechaSheet_(getDate(idx.timestamp));
           incidencias.push({
-            commentId: "row" + gvizIndex, gvizRowIndex: gvizIndex,
+            commentId: "k" + trackKey, gvizRowIndex: gvizIndex, trackKey,
             club, mes: normalizeMonth(get(idx.mes)) || (fechaI instanceof Date ? MESES_ES_[fechaI.getMonth()] : ""),
             embajador: cleanText(getFirst(idx.embajadorCols)),
             colaborador: cleanText(getFirst(idx.colaboradorCols)),
@@ -1801,10 +1844,11 @@
       // usa el índice real de fila dentro de gviz (gvizRowIndex), que es único
       // por definición y además es el mismo valor que ya se usa para escribir
       // la resolución en la hoja de origen — no hay forma de que colisione.
-      const commentId = "row" + gvizIndex;
+      // [FIX 2026-10-28] Ya no se usa la posición de la fila: ver trackKeyBase_.
+      const commentId = "k" + trackKey;
 
       rows.push({ club, mes, embajador, colaborador, rol, turno,
-                  criterios, comentarios, tipoReporteSheet: tipoReporte, fecha, commentId, gvizRowIndex: gvizIndex });
+                  criterios, comentarios, tipoReporteSheet: tipoReporte, fecha, commentId, gvizRowIndex: gvizIndex, trackKey });
     }
     // [NUEVO] Diagnóstico visible en consola si el resultado queda en 0 filas
     if (!rows.length && table.rows.length) {
@@ -2697,7 +2741,7 @@
       const { select, custom } = matchTipoIncidencia_(tipoIncidencia);
       const opts = ["", ...TIPOS_INCIDENCIA].map(t =>
         `<option value="${t}" ${t===select?"selected":""}>${t === "Otro" && custom ? escapeHtml("Otro: " + custom) : (t || "Sin tipo")}</option>`).join("");
-      return `<select class="inc-tipo" onchange="setTipoIncidencia('${r.commentId}', '${r.gvizRowIndex}', this.value)">${opts}</select>`;
+      return `<select class="inc-tipo" onchange="setTipoIncidencia('${r.commentId}', '${r.trackKey}', this.value)">${opts}</select>`;
     };
 
     // conSolicitud = tabla de Reposición de uniforme (con Cantidad y Foto).
@@ -2735,7 +2779,7 @@
       const fechaCierreHtml = estado === "Cerrado"
         ? `<input class="inc-fecha" type="date" value="${resolvedDate}" title="Fecha de cierre"
             ${minResolucion ? `min="${minResolucion}"` : ""} max="${toYMD_(new Date())}"
-            onchange="setResolvedDate('${r.commentId}', '${r.gvizRowIndex}', this.value)" />`
+            onchange="setResolvedDate('${r.commentId}', '${r.trackKey}', this.value)" />`
         : dash;
 
       const tipoIncidencia = tipoEfectivoIncidencia_(r);
@@ -2756,13 +2800,13 @@
           <td>${txt(r.rol)}</td>
           <td>${r.club ? escapeHtml(r.club) : `<span class="inc-muted">Sin sucursal</span>`}</td>
           ${conSolicitud ? `<td>${renderFotos_(r.foto)}</td>` : ""}
-          <td><select class="inc-estado" onchange="setEstadoIncidencia('${r.commentId}', '${r.gvizRowIndex}', this.value)">${estadoOptions}</select></td>
+          <td><select class="inc-estado" onchange="setEstadoIncidencia('${r.commentId}', '${r.trackKey}', this.value)">${estadoOptions}</select></td>
           <td>${fechaCierreHtml}</td>
           <td>${tiempoHtml}</td>
           <td><textarea class="inc-nota" rows="2" placeholder="Agregar comentario..."
-                onchange="setNotaCH('${r.commentId}', '${r.gvizRowIndex}', this.value)">${escapeHtml(notaCH)}</textarea></td>
+                onchange="setNotaCH('${r.commentId}', '${r.trackKey}', this.value)">${escapeHtml(notaCH)}</textarea></td>
           <td><button type="button" class="inc-del" title="Eliminar incidencia"
-                onclick="hideComment('${r.commentId}', '${r.gvizRowIndex}')">✕</button></td>
+                onclick="hideComment('${r.commentId}', '${r.trackKey}')">✕</button></td>
         </tr>`;
     };
 
@@ -2947,10 +2991,10 @@
   // respuestas del Form) a través del backend, para que no se pierda al
   // recargar. Se manda también club/colaborador/comentario/timestamp de
   // contexto solo para que la hoja de seguimiento sea legible — la llave
-  // real sigue siendo gvizRowIndex.
+  // real es trackKey (llega aquí en el parámetro gvizRowIndex).
   async function persistirResolucion_(gvizRowIndex, fecha, tipo, nota) {
     if (gvizRowIndex === undefined || gvizRowIndex === null || gvizRowIndex === "undefined") return;
-    const item = incidencias.find(r => String(r.gvizRowIndex) === String(gvizRowIndex));
+    const item = incidencias.find(r => String(r.trackKey) === String(gvizRowIndex));
     const result = await callAppsScript("saveResolution", {
       row: gvizRowIndex,
       fecha: fecha || "",
