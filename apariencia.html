@@ -2551,7 +2551,7 @@
     return Object.values(grupos).sort((a, b) =>
       b.veces - a.veces || a.nombre.localeCompare(b.nombre, "es"));
   }
-  // Una línea por colaborador (Nombre · Rol · N veces). En la vista general se
+  // Una línea por colaborador (Nombre · Rol). En la vista general se
   // agrupan bajo un subtítulo por sucursal; con una sola sucursal filtrada
   // no se muestra la sucursal.
   function personasHtml_(lista) {
@@ -2561,7 +2561,7 @@
       return `<div class="bajo-item" title="${escapeHtml(title)}">
         <span class="nom">${escapeHtml(x.nombre)}</span>
         <span class="det">${escapeHtml(ROL_CORTO_[x.rol] || x.rol || "—")}${notas ? " — " + escapeHtml(notas) : ""}</span>
-        ${x.veces > 1 ? `<span class="veces">${x.veces} veces</span>` : ""}</div>`;
+      </div>`;
     };
     if (getSelectedValues("filterClub").length === 1) {
       return `<div class="bajos-grid">${lista.map(item).join("")}</div>`;
