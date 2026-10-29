@@ -836,8 +836,8 @@
       border:none; background:#f3f7fb; border-radius:50%; width:32px; height:32px;
       cursor:pointer; font-size:16px; color:#5a7080;
     }
-    .gafete-modal-body { display:grid; grid-template-columns: 260px 1fr; gap:24px; align-items:center; }
-    .gafete-chart-wrap { position:relative; height:260px; }
+    .gafete-modal-body { display:grid; grid-template-columns: 180px 1fr; gap:20px; align-items:start; }
+    .gafete-chart-wrap { position:sticky; top:0; height:180px; }
     .gafete-motivos-list { display:flex; flex-direction:column; gap:8px; }
     /* [NUEVO] Cada fila es clicable: al dar clic se expande el desglose por
        rol para ese motivo (ver gafete-motivo-detail). */
@@ -850,8 +850,8 @@
     .gafete-motivo-row.open .chev { transform:rotate(180deg); }
     .gafete-motivo-detail {
       display:flex; flex-direction:column; gap:4px;
-      margin:-4px 0 4px; padding:8px 12px 8px 30px;
-      background:var(--surface-2); border-radius:0 0 10px 10px; font-size:12.5px;
+      margin:12px 0 0; padding:8px 12px;
+      background:var(--surface-2); border-radius:10px; font-size:12.5px;
     }
     .gafete-role-row { display:flex; justify-content:space-between; color:var(--text); }
     .gafete-role-row strong { color:var(--muted); font-weight:700; }
@@ -860,15 +860,27 @@
     /* [NUEVO 2026-10-28] Lista de colaboradores con calificación baja en un
        criterio (al dar clic en su tarjeta) y desglose por rol en las
        tarjetas de "Resultados por área". */
-    .bajos-section { margin-top:18px; }
-    .bajos-section h4 { margin:0 0 8px; font-size:14px; color:var(--text); }
-    .bajos-note { margin:0 0 10px; font-size:12.5px; color:var(--muted); }
-    .bajos-table { width:100%; border-collapse:collapse; font-size:13px; }
-    .bajos-table th { text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.03em;
-      color:var(--muted); font-weight:700; padding:6px 10px; border-bottom:1px solid #e8eef2; }
-    .bajos-table td { padding:7px 10px; border-bottom:1px solid #f0f3f6; color:var(--text); }
-    .bajos-table tr:last-child td { border-bottom:none; }
-    .bajos-table .veces { color:var(--muted); font-weight:700; white-space:nowrap; }
+    .gafete-modal.wide { max-width: 1080px; max-height: 92vh; }
+    .bajos-note { margin:0 0 8px; font-size:12.5px; color:var(--muted); }
+    /* Lista compacta en columnas: una línea por colaborador, para que quepa
+       completa sin desplazarse. */
+    .bajos-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); column-gap:18px; }
+    .bajo-item { display:flex; align-items:baseline; gap:8px; padding:3px 4px;
+      border-bottom:1px solid #f0f3f6; font-size:12.5px; line-height:1.3; min-width:0; }
+    .bajo-item .nom { font-weight:700; color:var(--text); white-space:nowrap; }
+    .bajo-item .det { color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; }
+    .bajo-item .veces { color:var(--muted); font-weight:700; white-space:nowrap; }
+    .gafete-motivo-detail[hidden] { display:none; }
+    .bajos-club { margin:8px 0 2px; font-size:11px; font-weight:700; text-transform:uppercase;
+      letter-spacing:.04em; color:var(--primary, #007882); }
+    .bajos-club:first-child { margin-top:0; }
+    .bajos-club span { color:var(--muted); font-weight:400; }
+    .gafete-motivo-detail .bajos-grid { grid-template-columns:repeat(auto-fill, minmax(185px, 1fr)); column-gap:10px; }
+    .gafete-motivo-detail .bajo-item { font-size:12px; gap:6px; }
+    .gafete-detalle-titulo { font-size:13px; font-weight:700; color:var(--text); margin-bottom:4px; }
+    .gafete-motivos-list { gap:5px !important; }
+    .gafete-motivo-row { padding:6px 12px !important; }
+    .gafete-motivo-detail .bajo-item { border-bottom-color:#e6ecf0; }
     .area-roles { width:100%; display:flex; flex-direction:column; gap:4px; margin-top:6px;
       padding-top:8px; border-top:1px solid #e8eef2; }
     .area-rol-row { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12.5px; }
@@ -1062,7 +1074,7 @@
 
   <!-- [NUEVO] (4) Panel de detalle: motivos de falla de Gafete -->
   <div id="gafeteModalOverlay" class="gafete-modal-overlay hidden" onclick="closeGafeteModalOnOverlay(event)">
-    <div class="gafete-modal">
+    <div class="gafete-modal wide">
       <div class="gafete-modal-head">
         <h3>Desglose de motivos — Gafete</h3>
         <button type="button" id="gafeteModalClose" onclick="closeGafeteModal()">✕</button>
@@ -1071,16 +1083,13 @@
         <div class="gafete-chart-wrap"><canvas id="gafeteDonutChart"></canvas></div>
         <div id="gafeteMotivosList" class="gafete-motivos-list"></div>
       </div>
-      <div class="bajos-section">
-        <h4>Colaboradores con calificación baja</h4>
-        <div id="gafeteBajosList"></div>
-      </div>
+      <div id="gafeteMotivoDetalle" class="gafete-motivo-detail" hidden></div>
     </div>
   </div>
 
   <!-- [NUEVO 2026-10-28] Panel: colaboradores con calificación baja en un criterio -->
   <div id="bajosModalOverlay" class="gafete-modal-overlay hidden" onclick="closeBajosModalOnOverlay(event)">
-    <div class="gafete-modal">
+    <div class="gafete-modal wide">
       <div class="gafete-modal-head">
         <h3 id="bajosModalTitle">Calificación baja</h3>
         <button type="button" onclick="closeBajosModal()">✕</button>
@@ -1881,7 +1890,8 @@
       const commentId = "k" + trackKey;
 
       rows.push({ club, mes, embajador, colaborador, rol, turno,
-                  criterios, comentarios, tipoReporteSheet: tipoReporte, fecha, commentId, gvizRowIndex: gvizIndex, trackKey });
+                  criterios, comentarios,
+                  gafeteTxt: get(idx.G), motivoGafeteTxt: cleanText(get(idx.motivoGafete)), tipoReporteSheet: tipoReporte, fecha, commentId, gvizRowIndex: gvizIndex, trackKey });
     }
     // [NUEVO] Diagnóstico visible en consola si el resultado queda en 0 filas
     if (!rows.length && table.rows.length) {
@@ -2515,119 +2525,139 @@
     document.getElementById("bajosModalTitle").textContent = "Calificación baja — " + cr.name;
     renderBajosList(document.getElementById("bajosModalList"), cr.key);
   }
-  function renderBajosList(el, key) {
-    const filtered = getFilteredData();
-    const clubsSel = getSelectedValues("filterClub");
-    const conSucursal = clubsSel.length !== 1;
-    // Agrupa por colaborador+rol+sucursal: si alguien salió bajo en varias
-    // caminatas aparece una sola vez con el número de veces.
+  // Nombre de rol corto solo para mostrar en las listas compactas (el
+  // nombre completo queda en el tooltip).
+  const ROL_CORTO_ = {
+    "Vestidores / técnico de Orden y Limpieza": "Téc. O. y L.",
+    "Concierge vestidores": "Concierge",
+    "Coach deportivo": "Coach",
+    "Instructor Acuática": "Instr. Acuática",
+    "Recepción Acuática": "Recep. Acuática",
+    "Relaciones Públicas": "RP",
+    "Caja estacionamiento": "Caja est."
+  };
+
+  // Agrupa respuestas por colaborador+rol+sucursal: si alguien salió bajo en
+  // varias caminatas aparece una sola vez con el número de veces.
+  function agruparPersonas_(rows) {
     const grupos = {};
-    let evaluados = 0;
-    filtered.forEach(r => {
-      const v = r.criterios[key];
-      if (v === 0 || v === 1) evaluados++;
-      if (v !== 0) return;
+    rows.forEach(r => {
       const nombre = r.colaborador || "Sin nombre";
       const k = [nombre, r.rol, r.club].join("|");
-      if (!grupos[k]) grupos[k] = { nombre, rol: r.rol, club: r.club, veces: 0 };
+      if (!grupos[k]) grupos[k] = { nombre, rol: r.rol, club: r.club, veces: 0, notas: new Set() };
       grupos[k].veces++;
+      if (r.nota) grupos[k].notas.add(r.nota);
     });
-    const lista = Object.values(grupos).sort((a, b) =>
+    return Object.values(grupos).sort((a, b) =>
       b.veces - a.veces || a.nombre.localeCompare(b.nombre, "es"));
-    if (!lista.length) {
+  }
+  // Una línea por colaborador (Nombre · Rol ×N). En la vista general se
+  // agrupan bajo un subtítulo por sucursal; con una sola sucursal filtrada
+  // no se muestra la sucursal.
+  function personasHtml_(lista) {
+    const item = x => {
+      const notas = [...x.notas].join(" / ");
+      const title = [x.nombre, x.rol, x.club, notas].filter(Boolean).join(" · ");
+      return `<div class="bajo-item" title="${escapeHtml(title)}">
+        <span class="nom">${escapeHtml(x.nombre)}</span>
+        <span class="det">${escapeHtml(ROL_CORTO_[x.rol] || x.rol || "—")}${notas ? " — " + escapeHtml(notas) : ""}</span>
+        ${x.veces > 1 ? `<span class="veces">×${x.veces}</span>` : ""}</div>`;
+    };
+    if (getSelectedValues("filterClub").length === 1) {
+      return `<div class="bajos-grid">${lista.map(item).join("")}</div>`;
+    }
+    return CLUBS.filter(c => lista.some(x => x.club === c)).map(c => {
+      const deClub = lista.filter(x => x.club === c);
+      return `<div class="bajos-club">${escapeHtml(c)} <span>(${deClub.reduce((s, x) => s + x.veces, 0)})</span></div>
+        <div class="bajos-grid">${deClub.map(item).join("")}</div>`;
+    }).join("");
+  }
+
+  function renderBajosList(el, key) {
+    const filtered = getFilteredData();
+    const evaluados = filtered.filter(r => r.criterios[key] === 0 || r.criterios[key] === 1).length;
+    const bajos = filtered.filter(r => r.criterios[key] === 0);
+    if (!bajos.length) {
       el.innerHTML = `<div class="empty">Nadie tuvo calificación baja en este criterio con los filtros seleccionados.</div>`;
       return;
     }
-    const totalBajas = lista.reduce((s, x) => s + x.veces, 0);
+    const lista = agruparPersonas_(bajos);
     el.innerHTML = `
-      <p class="bajos-note">${totalBajas} de ${evaluados} evaluaciones con calificación baja · ${lista.length} colaborador(es)</p>
-      <table class="bajos-table">
-        <thead><tr><th>Nombre</th><th>Rol</th>${conSucursal ? "<th>Sucursal</th>" : ""}<th>Veces</th></tr></thead>
-        <tbody>${lista.map(x => `
-          <tr><td>${escapeHtml(x.nombre)}</td><td>${escapeHtml(x.rol || "—")}</td>
-          ${conSucursal ? `<td>${escapeHtml(x.club)}</td>` : ""}<td class="veces">${x.veces}</td></tr>`).join("")}
-        </tbody>
-      </table>`;
+      <p class="bajos-note">${bajos.length} de ${evaluados} evaluaciones con calificación baja · ${lista.length} colaborador(es)</p>
+      ${personasHtml_(lista)}`;
   }
 
-  // Lee los conteos brutos (motivosGafeteData) y calcula el % de cada motivo
-  // en tiempo real, respetando los filtros globales del dashboard.
-  // [MODIFICADO] (4) Ahora también respeta el filtro global de Rol
-  // (#filterRole), ya que la hoja "Gafete" ya trae el desglose por
-  // rol/turno/sucursal/motivo y el backend (Codigo.gs) expone el campo "rol".
+  // [MODIFICADO 2026-10-29] El motivo de cada incumplimiento de Gafete se
+  // toma de la propia respuesta (texto de Gafete + "Motivo de inasistencia"),
+  // así cada motivo se puede abrir para ver quién falló. Los motivos libres
+  // que no encajan en una categoría van a "Otro motivo" con su texto.
+  const MOTIVO_NO_VISIBLE_ = "Colocado, pero no visible o fuera de altura";
+  function motivoGafete_(r) {
+    const g = normalizeText(r.gafeteTxt);
+    if (!g) return { motivo: "Sin respuesta en Gafete" };
+    if (g.includes("COLOCADO")) return { motivo: MOTIVO_NO_VISIBLE_ };
+    const m = normalizeText(r.motivoGafeteTxt);
+    if (!m) return { motivo: "No lo porta (sin motivo registrado)" };
+    if (m.includes("EXTRAV")) return { motivo: "Lo extravió" };
+    if (m.includes("CAPITAL HUMANO")) return { motivo: "Capital Humano no se lo ha entregado" };
+    if (m.includes("OLVID") || m.includes("SE LE QUED")) return { motivo: "Olvidó portarlo" };
+    if (m.includes("NINO") || m.includes("KIDS") || m.includes("PERMITIDO"))
+      return { motivo: "Permitido no portarlo (niños)" };
+    return { motivo: "Otro motivo", nota: r.motivoGafeteTxt };
+  }
+
   function renderGafeteDonut() {
-    const months = getSelectedValues("filterMonth");
-    const clubs = getSelectedValues("filterClub"); // [FIX] ahora es multi-selección
-    const shift = document.getElementById("filterShift").value;
-    const roles = getSelectedValues("filterRole");
-
-    const filtered = motivosGafeteData.filter(m =>
-      (!months.length || months.includes(m.mes)) &&
-      (!clubs.length || clubs.includes(m.club)) &&
-      (shift === "Todos" || m.turno === shift) &&
-      (!roles.length || roles.includes(m.rol))
-    );
-
-    const totals = {};
-    // [NUEVO] Desglose por rol de cada motivo: { motivo: { rol: conteo } }.
-    // Se muestra al hacer clic en un motivo de la lista (ver más abajo).
-    const rolesPorMotivo = {};
-    filtered.forEach(m => {
-      totals[m.motivo] = (totals[m.motivo]||0) + m.conteo;
-      if (m.conteo > 0) {
-        if (!rolesPorMotivo[m.motivo]) rolesPorMotivo[m.motivo] = {};
-        rolesPorMotivo[m.motivo][m.rol] = (rolesPorMotivo[m.motivo][m.rol]||0) + m.conteo;
-      }
+    const bajos = getFilteredData().filter(r => r.criterios.G === 0);
+    const porMotivo = {};
+    bajos.forEach(r => {
+      const { motivo, nota } = motivoGafete_(r);
+      (porMotivo[motivo] = porMotivo[motivo] || []).push({ ...r, nota });
     });
-    const totalSum = Object.values(totals).reduce((a,b)=>a+b, 0);
-
-    // [NUEVO 2026-10-28] Nombre, rol (y sucursal) de quienes salieron bajo en Gafete.
-    renderBajosList(document.getElementById("gafeteBajosList"), "G");
+    const totalSum = bajos.length;
 
     const listEl = document.getElementById("gafeteMotivosList");
     const colors = ["#007882","#7cd4d2","#9ee1e1","#d99a16","#c94032","#3e700c","#5a7080","#98a2b3"];
 
     if (!totalSum) {
       listEl.innerHTML = `<div class="empty">Sin incidencias de Gafete para esta selección de Mes/Sucursal/Rol/Turno.</div>`;
+      document.getElementById("gafeteMotivoDetalle").hidden = true;
       if (gafeteChart) { gafeteChart.destroy(); gafeteChart = null; }
       return;
     }
 
-    const labels = Object.keys(totals);
-    const values = labels.map(k => totals[k]);
+    const labels = Object.keys(porMotivo).sort((a, b) => porMotivo[b].length - porMotivo[a].length);
+    const values = labels.map(k => porMotivo[k].length);
     const pcts   = values.map(v => Math.round((v/totalSum)*100));
 
-    // [FIX] Antes el desglose por rol de un motivo aparecía DOS veces (al
-    // pasar el cursor sobre la fila de la lista y al pasar el cursor sobre
-    // la dona), mostrando lo mismo dos veces. Ahora aparece solo al hacer
-    // clic en la fila de la lista, y sin repetir el nombre del motivo (ya
-    // se ve en la fila misma) — solo la lista de roles y su conteo.
+    // Se recuerda qué motivo estaba abierto para que siga abierto al cambiar filtros.
+    const abierto = listEl.getAttribute("data-abierto");
     listEl.innerHTML = labels.map((label, i) => `
-      <div class="gafete-motivo-row" data-idx="${i}">
+      <div class="gafete-motivo-row${label === abierto ? " open" : ""}" data-idx="${i}">
         <span><span class="swatch" style="background:${colors[i%colors.length]}"></span>${escapeHtml(label)}</span>
         <span style="display:flex;align-items:center;">
           <strong>${pcts[i]}% <span style="color:#98a2b3;font-weight:400;">(${values[i]})</span></strong>
           <span class="chev">▾</span>
         </span>
-      </div>
-      <div class="gafete-motivo-detail" id="gafeteDetail_${i}" hidden></div>`).join("");
+      </div>`).join("");
 
+    // Los nombres del motivo abierto se muestran debajo, a todo lo ancho de
+    // la ventana, para que quepan en más columnas sin desplazarse.
+    const detalleEl = document.getElementById("gafeteMotivoDetalle");
+    const pintarDetalle = (label) => {
+      listEl.setAttribute("data-abierto", label || "");
+      listEl.querySelectorAll(".gafete-motivo-row").forEach(r =>
+        r.classList.toggle("open", labels[r.getAttribute("data-idx")] === label));
+      detalleEl.hidden = !label;
+      detalleEl.innerHTML = label
+        ? `<div class="gafete-detalle-titulo">${escapeHtml(label)} · ${porMotivo[label].length}</div>
+           ${personasHtml_(agruparPersonas_(porMotivo[label]))}`
+        : "";
+    };
+    pintarDetalle(labels.includes(abierto) ? abierto : "");
     listEl.querySelectorAll(".gafete-motivo-row").forEach(row => {
       row.addEventListener("click", () => {
-        const idx = row.getAttribute("data-idx");
-        const detail = document.getElementById("gafeteDetail_" + idx);
-        const wasOpen = !detail.hidden;
-        // Solo un motivo expandido a la vez.
-        listEl.querySelectorAll(".gafete-motivo-detail").forEach(d => d.hidden = true);
-        listEl.querySelectorAll(".gafete-motivo-row").forEach(r => r.classList.remove("open"));
-        if (wasOpen) return; // ya estaba abierto: clic lo cierra
-        const byRol = rolesPorMotivo[labels[idx]] || {};
-        const entries = Object.entries(byRol).sort((a,b)=>b[1]-a[1]);
-        detail.innerHTML = entries.length
-          ? entries.map(([rol,cnt]) => `<div class="gafete-role-row"><span>${escapeHtml(rol)}</span><strong>${cnt}</strong></div>`).join("")
-          : `<div class="gafete-role-row"><span>Sin roles con incidencias para este motivo.</span></div>`;
-        detail.hidden = false;
-        row.classList.add("open");
+        const label = labels[row.getAttribute("data-idx")];
+        pintarDetalle(listEl.getAttribute("data-abierto") === label ? "" : label); // clic de nuevo lo cierra
       });
     });
 
