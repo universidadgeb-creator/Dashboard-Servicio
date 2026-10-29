@@ -874,6 +874,25 @@
     .bajos-club { margin:8px 0 2px; font-size:11px; font-weight:700; text-transform:uppercase;
       letter-spacing:.04em; color:var(--primary, #007882); }
     .bajos-club:first-child { margin-top:0; }
+
+    /* [NUEVO 2026-10-29] Mapa de calor colaborador × criterio. */
+    .mc-wrap { overflow-x:auto; }
+    .mc-grid { display:grid; grid-template-columns:minmax(300px, 2.6fr) repeat(7, minmax(58px, 1fr));
+      gap:3px; min-width:820px; align-items:center; font-size:13px; }
+    .mc-head { font-size:11.5px; font-weight:700; color:var(--muted); text-align:center; padding:4px 2px; line-height:1.2; }
+    .mc-head.izq { text-align:left; }
+    .mc-name { padding:3px 6px; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .mc-name strong { color:var(--text); }
+    .mc-name span { color:var(--muted); font-size:12px; }
+    .mc-cell { height:26px; border-radius:6px; display:flex; align-items:center; justify-content:center;
+      font-weight:700; font-size:12px; background:#f1f4f7; }
+    .mc-1 { background:#fbe3b0; color:#7a4b00; }
+    .mc-2 { background:#f3a59a; color:#7a1f14; }
+    .mc-3 { background:#c94032; color:#fff; }
+    .mc-foot { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;
+      margin-top:12px; font-size:12.5px; color:var(--muted); }
+    .mc-legend { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .mc-legend i { display:inline-block; width:14px; height:14px; border-radius:4px; vertical-align:-2px; margin-right:4px; }
     .bajos-club span { color:var(--muted); font-weight:400; }
     .gafete-motivo-detail .bajos-grid { grid-template-columns:repeat(auto-fill, minmax(185px, 1fr)); column-gap:10px; }
     .gafete-motivo-detail .bajo-item { font-size:12px; gap:6px; }
@@ -995,6 +1014,25 @@
         <h2 class="section-title">Resultados por área</h2>
       </div></div>
       <div id="areaCards" class="grid"></div>
+    </section>
+
+    <!-- [NUEVO 2026-10-29] COLABORADORES CON INCUMPLIMIENTO EN VARIOS CRITERIOS -->
+    <section class="section panel">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">Colaboradores con incumplimiento en varios criterios</h2>
+          <p class="section-subtitle">Veces que cada colaborador tuvo calificación baja en cada criterio, con los filtros seleccionados.</p>
+        </div>
+        <div class="field"><label for="multiMin">Nivel de atención</label>
+          <select id="multiMin">
+            <option value="todos">Todos los niveles</option>
+            <option value="inmediata">Retroalimentación inmediata</option>
+            <option value="seguimiento">Seguimiento</option>
+            <option value="observacion">Observación</option>
+          </select>
+        </div>
+      </div>
+      <div id="multiHeatmap"></div>
     </section>
 
     <!-- AVANCE CAMINATAS POR ROL -->
@@ -1378,6 +1416,10 @@
     ["commentClub","commentMonth","commentRole","commentShift","commentArea","commentTipo"]
       .forEach(id => document.getElementById(id).addEventListener("change", renderComments));
     document.getElementById("avanceMonth").addEventListener("change", renderAvance);
+    document.getElementById("multiMin").addEventListener("change", () => {
+      multiVerTodos = false;
+      renderMultiCriterio(getFilteredData());
+    });
     document.getElementById("avanceClub").addEventListener("change", renderAvance);
     document.getElementById("clearFiltersBtn").addEventListener("click", () => {
       ["filterShift"]
@@ -2097,6 +2139,7 @@
     renderResultsMonthlyChart(); // [NUEVO] Resultado mensual comparativo
     renderCriteriaCards(filtered);
     renderAreaCards(filtered); // [NUEVO] Resultados por área
+    renderMultiCriterio(filtered); // [NUEVO 2026-10-29] Mapa de calor colaborador × criterio
     renderComments();
     // [NUEVO] (4) si el panel de Gafete está abierto, se actualiza con los filtros vigentes
     if (isGafeteModalOpen()) renderGafeteDonut();
@@ -2191,6 +2234,75 @@
         ${rolesHtml}`;
       c.appendChild(card);
     });
+  }
+
+  // ─── [NUEVO 2026-10-29] INCUMPLIMIENTO EN VARIOS CRITERIOS ─────────────────
+  // Una fila por colaborador (nombre+rol+sucursal) que salió bajo en al menos
+  // N criterios distintos; cada celda = veces que salió bajo en ese criterio.
+  const CRIT_CORTO_ = { H:"Higiene", P:"Peinado", A:"Accesorios", LU:"Estado del uniforme",
+                        U:"Uso del uniforme", C:"Calzado", G:"Gafete" };
+  const MULTI_FILAS_INICIALES = 15;
+  let multiVerTodos = false;
+  function renderMultiCriterio(filtered) {
+    const el = document.getElementById("multiHeatmap");
+    if (!el) return;
+    // Nivel de atención según cuántos criterios distintos salió bajo.
+    const nivelSel = document.getElementById("multiMin").value;
+    const NIVELES = {
+      todos:       { ok: n => n >= 2,  txt: "con incumplimientos en varios criterios" },
+      inmediata:   { ok: n => n >= 4,  txt: "para retroalimentación inmediata" },
+      seguimiento: { ok: n => n === 3, txt: "para seguimiento" },
+      observacion: { ok: n => n === 2, txt: "en observación" }
+    };
+    const nivelAt = NIVELES[nivelSel] || NIVELES.todos;
+    const conSucursal = getSelectedValues("filterClub").length !== 1;
+
+    const personas = {};
+    filtered.forEach(r => {
+      const nombre = r.colaborador || "Sin nombre";
+      const k = [nombre, r.rol, r.club].join("|");
+      const p = personas[k] = personas[k] || { nombre, rol: r.rol, club: r.club, bajas: {} };
+      CRITERIA.forEach(c => { if (r.criterios[c.key] === 0) p.bajas[c.key] = (p.bajas[c.key] || 0) + 1; });
+    });
+    const lista = Object.values(personas)
+      .map(p => ({ ...p, nCrit: Object.keys(p.bajas).length,
+                   total: Object.values(p.bajas).reduce((a, b) => a + b, 0) }))
+      .filter(p => nivelAt.ok(p.nCrit))
+      .sort((a, b) => b.nCrit - a.nCrit || b.total - a.total || a.nombre.localeCompare(b.nombre, "es"));
+
+    if (!lista.length) {
+      el.innerHTML = `<div class="empty">No hay colaboradores ${nivelAt.txt} con los filtros seleccionados.</div>`;
+      return;
+    }
+
+    const visibles = multiVerTodos ? lista : lista.slice(0, MULTI_FILAS_INICIALES);
+    const nivel = n => n >= 3 ? "mc-3" : "mc-" + n;
+    el.innerHTML = `
+      <div class="mc-wrap"><div class="mc-grid">
+        <div class="mc-head izq">Colaborador</div>
+        ${CRITERIA.map(c => `<div class="mc-head" title="${escapeHtml(c.name)}">${CRIT_CORTO_[c.key]}</div>`).join("")}
+        ${visibles.map(p => {
+          const det = [ROL_CORTO_[p.rol] || p.rol, conSucursal ? p.club : ""].filter(Boolean).join(" · ");
+          return `<div class="mc-name" title="${escapeHtml([p.nombre, p.rol, p.club].join(" · "))}">
+              <strong>${escapeHtml(p.nombre)}</strong> <span>${escapeHtml(det)}</span></div>
+            ${CRITERIA.map(c => {
+              const n = p.bajas[c.key] || 0;
+              return `<div class="mc-cell ${n ? nivel(n) : ""}"${n ? ` title="${escapeHtml(p.nombre)}: ${n} ${n === 1 ? "vez" : "veces"} en ${escapeHtml(c.name)}"` : ""}>${n || ""}</div>`;
+            }).join("")}`;
+        }).join("")}
+      </div></div>
+      <div class="mc-foot">
+        <div class="mc-legend">Veces con calificación baja:
+          <span><i class="mc-1"></i>1</span><span><i class="mc-2"></i>2</span><span><i class="mc-3"></i>3 o más</span>
+        </div>
+        <div>${visibles.length} de ${lista.length} colaborador(es)
+          ${lista.length > MULTI_FILAS_INICIALES
+            ? ` · <button type="button" class="secondary" id="multiToggle" style="padding:6px 12px;">${multiVerTodos ? "Ver menos" : "Ver todos"}</button>`
+            : ""}
+        </div>
+      </div>`;
+    const btn = document.getElementById("multiToggle");
+    if (btn) btn.addEventListener("click", () => { multiVerTodos = !multiVerTodos; renderMultiCriterio(getFilteredData()); });
   }
 
   function getFilteredData() {
