@@ -1646,14 +1646,42 @@
     (resolucionesBackend || []).forEach(res => {
       if (Number(res.gvizRowIndex) >= TRACK_KEY_BASE) byRowIndex[res.gvizRowIndex] = res;
     });
+    // [FIX 2026-11-04] Primero la llave nueva (marca temporal), luego la v1.
+    // Si ninguna coincide (el nombre se corrigió después de guardar), se
+    // recupera por contenido: misma fecha + mismo comentario (ver
+    // recuperarPorContenido_).
+    // Un registro "vacío" (En proceso, sin fecha/nota/tipo) no le gana a uno
+    // con información recuperado por contenido; solo se usa si no hay otro.
+    const vacio = res => !res.fecha && !res.nota && !res.tipo && !res.oculto &&
+      (!res.estado || res.estado === "En proceso");
+    const usados = new Set();
+    const encontrado = {};
+    const soloVacio = {};
+    [...respuestas, ...incidencias].forEach(r => {
+      const res = byRowIndex[r.trackKey] || byRowIndex[r.trackKeyV1];
+      if (!res) return;
+      usados.add(res);
+      if (vacio(res)) soloVacio[r.commentId] = res;
+      else encontrado[r.commentId] = res;
+    });
+    Object.assign(encontrado, recuperarPorContenido_(
+      (resolucionesBackend || []).filter(res => !usados.has(res) && !vacio(res)),
+      incidencias.filter(r => !encontrado[r.commentId])
+    ));
+    Object.keys(soloVacio).forEach(id => { if (!encontrado[id]) encontrado[id] = soloVacio[id]; });
 
     [...respuestas, ...incidencias].forEach(r => {
-      const res = byRowIndex[r.trackKey];
+      const res = encontrado[r.commentId];
       comentStates[r.commentId] = {
         resolved: !!(res && res.fecha),
         resolvedDate: (res && res.fecha) || "",
         tipo: (res && res.tipo) || "",
-        nota: (res && res.nota) || ""
+        nota: (res && res.nota) || "",
+        estado: (res && res.estado) || "",
+        // Llave del registro de seguimiento que se encontró (puede ser la v1 o
+        // uno recuperado por contenido); al guardar se manda como "anterior"
+        // para que Codigo.gs reuse esa fila en vez de crear otra.
+        llave: res ? String(res.gvizRowIndex) : ""
       };
       // [NUEVO] Igual que "resolved", "oculto" ahora manda desde el backend
       // (compartido entre computadoras) en vez de depender solo de lo que
@@ -1662,6 +1690,57 @@
     });
     saveCommentStates();
     saveHiddenComments();
+  }
+
+  // [NUEVO 2026-11-04] Registros de "Seguimiento de Incidencias" cuya llave ya
+  // no coincide con ninguna fila (p.ej. se corrigió el nombre en el Sheet):
+  // se emparejan con la incidencia que tenga la misma fecha y el mismo
+  // comentario (columnas "Marca temporal" y "Comentario" que el dashboard
+  // guarda en cada registro). Si varias incidencias coinciden, se desempata
+  // por el nombre (ver mismoColaborador); si sigue habiendo duda, no se asigna.
+  // Gana el registro actualizado más recientemente. Requiere que Codigo.gs
+  // devuelva marcaTemporal/colaborador/comentario (si no, no hace nada).
+  function textoSeguimiento_(item) {
+    return item.comentarios || [item.tipoSolicitada, item.cantidadSolicitada].filter(Boolean).join(" x");
+  }
+  function ymdSeguimiento_(v) {
+    const s = String(v || "").trim();
+    if (!s) return "";
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+    const d = new Date(s.replace(/\s*\(.*\)\s*$/, ""));
+    return isNaN(d) ? "" : toYMD_(d);
+  }
+  function recuperarPorContenido_(sinLlave, pendientes) {
+    const norm = v => String(v || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .toLowerCase().replace(/\s+/g, " ").trim();
+    // Mismo colaborador aunque el nombre se haya corregido: una primera
+    // palabra es inicio de la otra ("Zab" / "Zabdiel Silva") o comparten una
+    // palabra de 4+ letras, p.ej. el apellido ("Liyi Calderon" / "Liliana Calderón").
+    const mismoColaborador = (a, b) => {
+      const ta = norm(a).split(" ").filter(Boolean), tb = norm(b).split(" ").filter(Boolean);
+      if (!ta.length || !tb.length) return false;
+      if (ta[0].startsWith(tb[0]) || tb[0].startsWith(ta[0])) return true;
+      return ta.some(w => w.length >= 4 && tb.includes(w));
+    };
+    const indice = {};
+    const porTexto = {}; // para registros guardados cuando la fila aún no tenía marca temporal
+    pendientes.forEach(r => {
+      const fecha = r.fecha instanceof Date && !isNaN(r.fecha) ? toYMD_(r.fecha) : ymdSeguimiento_(r.fecha);
+      const texto = norm(textoSeguimiento_(r));
+      (indice[fecha + "|" + texto] = indice[fecha + "|" + texto] || []).push(r);
+      (porTexto[texto] = porTexto[texto] || []).push(r);
+    });
+    const out = {};
+    sinLlave
+      .filter(res => res.comentario)
+      .sort((a, b) => String(a.actualizado || "").localeCompare(String(b.actualizado || "")))
+      .forEach(res => {
+        const fecha = ymdSeguimiento_(res.marcaTemporal);
+        let cands = (fecha ? indice[fecha + "|" + norm(res.comentario)] : porTexto[norm(res.comentario)]) || [];
+        if (cands.length !== 1 || !fecha) cands = cands.filter(r => mismoColaborador(r.colaborador, res.colaborador));
+        if (cands.length === 1) out[cands[0].commentId] = res;
+      });
+    return out;
   }
 
   // ─── PARSEO GVIZ ─────────────────────────────────────────────────────────────
@@ -1825,7 +1904,22 @@
         getFirst(idx.colaboradorCols), get(idx.tipoSolicitada)
       ]);
       const rep = firmasVistas[firma] = (firmasVistas[firma] || 0) + 1;
-      let trackKey = TRACK_KEY_BASE + (rep === 1 ? hash : trackKeyBase_([firma, rep]).hash);
+      // trackKeyV1 = llave del 28-oct (incluye el nombre): se sigue leyendo
+      // para no perder lo ya guardado con ella.
+      const trackKeyV1 = TRACK_KEY_BASE + (rep === 1 ? hash : trackKeyBase_([firma, rep]).hash);
+      // [FIX 2026-11-04] La llave v1 incluía el nombre del colaborador, así que
+      // al corregir un nombre en el Sheet (p.ej. "Delia Gonzaleza" → "Delia
+      // González") la llave cambiaba y el estado guardado se perdía. Ahora,
+      // si la fila tiene marca temporal (todas las del Form), la llave sale
+      // SOLO de la marca temporal (+ n.º de repetición si hay dos idénticas),
+      // que no se edita. Sin marca temporal se usa la v1.
+      const tsRaw = row.c && row.c[idx.timestamp] && row.c[idx.timestamp].v;
+      let trackKey = trackKeyV1;
+      if (tsRaw) {
+        const { firma: firmaTs, hash: hashTs } = trackKeyBase_(["ts", tsRaw]);
+        const repTs = firmasVistas[firmaTs] = (firmasVistas[firmaTs] || 0) + 1;
+        trackKey = TRACK_KEY_BASE + (repTs === 1 ? hashTs : trackKeyBase_([firmaTs, repTs]).hash);
+      }
       if (llavesUsadas[trackKey] !== undefined) {
         console.warn(`[seguimiento] Llave repetida en filas ${llavesUsadas[trackKey]} y ${gvizIndex}.`);
       }
@@ -1846,7 +1940,7 @@
         if (rolI !== "Caja" && (isRelevantComment(comentariosI) || tipoSolicitada || cantidadSolicitada || foto)) {
           const fechaI = parseFechaSheet_(getDate(idx.timestamp));
           incidencias.push({
-            commentId: "k" + trackKey, gvizRowIndex: gvizIndex, trackKey,
+            commentId: "k" + trackKey, gvizRowIndex: gvizIndex, trackKey, trackKeyV1,
             club, mes: normalizeMonth(get(idx.mes)) || (fechaI instanceof Date ? MESES_ES_[fechaI.getMonth()] : ""),
             embajador: cleanText(getFirst(idx.embajadorCols)),
             colaborador: cleanText(getFirst(idx.colaboradorCols)),
@@ -1933,7 +2027,7 @@
 
       rows.push({ club, mes, embajador, colaborador, rol, turno,
                   criterios, comentarios,
-                  gafeteTxt: get(idx.G), motivoGafeteTxt: cleanText(get(idx.motivoGafete)), tipoReporteSheet: tipoReporte, fecha, commentId, gvizRowIndex: gvizIndex, trackKey });
+                  gafeteTxt: get(idx.G), motivoGafeteTxt: cleanText(get(idx.motivoGafete)), tipoReporteSheet: tipoReporte, fecha, commentId, gvizRowIndex: gvizIndex, trackKey, trackKeyV1 });
     }
     // [NUEVO] Diagnóstico visible en consola si el resultado queda en 0 filas
     if (!rows.length && table.rows.length) {
@@ -2902,11 +2996,11 @@
     renderComments();
   }
 
-  // [NUEVO 2026-10-16] Estado de cada incidencia: "Cerrado" = tiene fecha de
-  // resolución (igual que el antiguo "Atendido por CH"); "Sin inventario" se
-  // guarda como marca al inicio de la nota CH (el backend actual solo guarda
-  // fecha/tipo/nota/oculto, así se comparte entre computadoras sin cambiarlo);
-  // todo lo demás es "En proceso".
+  // [NUEVO 2026-10-16] Estado de cada incidencia (En proceso / Sin
+  // inventario / Cerrado), guardado en la columna "Estado" de "Seguimiento de
+  // Incidencias" (Codigo.gs). "Cerrado" además lleva fecha de resolución.
+  // Registros guardados antes de esa columna: se deduce de la fecha y de la
+  // marca "[SIN INVENTARIO]" que se ponía al inicio de la nota.
   const ESTADOS_INCIDENCIA = ["En proceso", "Sin inventario", "Cerrado"];
   const MARCA_SIN_INVENTARIO = "[SIN INVENTARIO]";
   function notaSinMarca_(nota) {
@@ -2915,6 +3009,7 @@
   }
   function getEstadoIncidencia_(id) {
     const state = comentStates[id] || {};
+    if (ESTADOS_INCIDENCIA.includes(state.estado)) return state.estado;
     if (state.resolved && state.resolvedDate) return "Cerrado";
     if (String(state.nota || "").startsWith(MARCA_SIN_INVENTARIO)) return "Sin inventario";
     return "En proceso";
@@ -2949,6 +3044,33 @@
     }).join("");
   }
 
+  // [NUEVO 2026-11-04] Incidencias idénticas (mismo colaborador, sucursal,
+  // tipo, comentario y cantidad) son un error de captura: se muestra solo una.
+  // Se conserva la que ya tiene seguimiento guardado (estado/nota/fecha); si
+  // ninguna tiene, la más reciente. La misma persona con incidencias
+  // DISTINTAS sigue apareciendo varias veces.
+  function quitarDuplicadosExactos_(lista) {
+    const norm = v => String(v || "").normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .toLowerCase().replace(/\s+/g, " ").trim();
+    const tieneSeguimiento = r => {
+      const st = comentStates[r.commentId] || {};
+      return !!(st.estado || st.resolvedDate || st.nota || st.tipo);
+    };
+    const grupos = new Map();
+    lista.forEach(r => {
+      const firma = [r.colaborador, r.club, r.tipoSolicitada || r.tipoReporteSheet, r.comentarios, r.cantidadSolicitada].map(norm).join("|");
+      if (!grupos.has(firma)) grupos.set(firma, []);
+      grupos.get(firma).push(r);
+    });
+    return lista.filter(r => {
+      const g = grupos.get([r.colaborador, r.club, r.tipoSolicitada || r.tipoReporteSheet, r.comentarios, r.cantidadSolicitada].map(norm).join("|"));
+      const elegido = g.slice().sort((a, b) =>
+        (tieneSeguimiento(b) - tieneSeguimiento(a)) || (b.gvizRowIndex - a.gvizRowIndex))[0];
+      r.vecesRegistrada = g.length;
+      return r === elegido;
+    });
+  }
+
   function renderComments() {
     const panel = document.getElementById("commentsPanel");
     if (!panel || panel.classList.contains("hidden")) return;
@@ -2964,7 +3086,7 @@
 
     // "base" = todo lo que cumple los filtros de arriba (club/mes/rol/turno/
     // tipo), antes de separar por pestaña de estado — se usa para el resumen.
-    const base = incidencias.filter(item =>
+    const base = quitarDuplicadosExactos_(incidencias.filter(item => !hiddenComments[item.commentId])).filter(item =>
       (!clubs.length || clubs.includes(item.club)) &&
       (!months.length || months.includes(item.mes)) &&
       (role  ==="Todos" || item.rol   ===role)  &&
@@ -3046,7 +3168,8 @@
         <tr class="inc-row inc-${estadoClase[estado]}" id="cr_${r.commentId}">
           <td>${txt(r.mes)}</td>
           <td><div class="inc-name">${txt(r.colaborador)}</div>
-            ${fechaStr ? `<div class="inc-sub">${escapeHtml(fechaStr)}</div>` : ""}</td>
+            ${fechaStr ? `<div class="inc-sub">${escapeHtml(fechaStr)}</div>` : ""}
+            ${r.vecesRegistrada > 1 ? `<div class="inc-sub" title="Había ${r.vecesRegistrada} registros idénticos en el Sheet; se muestra solo uno.">Registrada ${r.vecesRegistrada} veces</div>` : ""}</td>
           <td>${txt(r.turno)}</td>
           <td>${txt(r.embajador)}</td>
           ${conSolicitud ? `<td class="inc-num">${txt(r.cantidadSolicitada)}</td>` : ""}
@@ -3176,15 +3299,14 @@
   async function setEstadoIncidencia(id, gvizRowIndex, estado) {
     if (!comentStates[id]) comentStates[id] = {};
     const st = comentStates[id];
-    const nota = notaSinMarca_(st.nota);
+    st.estado = estado;
+    st.nota = notaSinMarca_(st.nota);
     if (estado === "Cerrado") {
       st.resolvedDate = st.resolvedDate || toYMD_(new Date());
       st.resolved = true;
-      st.nota = nota;
     } else {
       st.resolvedDate = "";
       st.resolved = false;
-      st.nota = estado === "Sin inventario" ? (MARCA_SIN_INVENTARIO + (nota ? " " + nota : "")) : nota;
     }
     await saveCommentStates();
     renderComments();
@@ -3197,18 +3319,17 @@
     if (!comentStates[id]) comentStates[id] = {};
     comentStates[id].resolvedDate = date;
     comentStates[id].resolved = !!date;
+    comentStates[id].estado = date ? "Cerrado" : "En proceso";
     await saveCommentStates();
     renderComments();
     await persistirIncidencia_(id, gvizRowIndex);
   }
 
-  // Comentario libre de Capital Humano (conserva la marca de "Sin inventario").
+  // Comentario libre de Capital Humano.
   async function setNotaCH(id, gvizRowIndex, texto) {
     if (!comentStates[id]) comentStates[id] = {};
-    const limpio = cleanText(texto);
-    comentStates[id].nota = getEstadoIncidencia_(id) === "Sin inventario"
-      ? MARCA_SIN_INVENTARIO + (limpio ? " " + limpio : "")
-      : limpio;
+    comentStates[id].estado = getEstadoIncidencia_(id); // conserva el estado deducido
+    comentStates[id].nota = cleanText(texto);
     await saveCommentStates();
     await persistirIncidencia_(id, gvizRowIndex);
   }
@@ -3222,7 +3343,14 @@
       const st = comentStates[id] || {};
       const item = incidencias.find(r => r.commentId === id);
       const tipo = item ? tipoEfectivoIncidencia_(item) : (st.tipo || "");
-      return persistirResolucion_(gvizRowIndex, st.resolved ? (st.resolvedDate || "") : "", tipo, st.nota || "");
+      const estado = getEstadoIncidencia_(id);
+      // Un Codigo.gs anterior a la columna "Estado" ignora ese parámetro (y no
+      // manda "estado" en las resoluciones): ahí "Sin inventario" se sigue
+      // guardando como marca al inicio de la nota para no perderlo.
+      const nota = estado === "Sin inventario" && backendSinEstado_()
+        ? (MARCA_SIN_INVENTARIO + " " + (st.nota || "")).trim()
+        : (st.nota || "");
+      return persistirResolucion_(gvizRowIndex, st.resolved ? (st.resolvedDate || "") : "", tipo, nota, estado);
     }).catch(err => console.error("Error guardando incidencia:", err));
     return colaGuardado_;
   }
@@ -3247,21 +3375,48 @@
   // recargar. Se manda también club/colaborador/comentario/timestamp de
   // contexto solo para que la hoja de seguimiento sea legible — la llave
   // real es trackKey (llega aquí en el parámetro gvizRowIndex).
-  async function persistirResolucion_(gvizRowIndex, fecha, tipo, nota) {
+  // [NUEVO 2026-11-04] Si el registro de seguimiento de esta incidencia está
+  // guardado con otra llave (v1 o recuperado por contenido), se manda como
+  // "anterior": Codigo.gs le cambia la llave a esa misma fila en lugar de
+  // agregar una fila nueva (así no se repiten registros en el Sheet).
+  function llaveAnterior_(item, gvizRowIndex) {
+    const st = item && comentStates[item.commentId];
+    return st && st.llave && st.llave !== String(gvizRowIndex) ? st.llave : "";
+  }
+  // Codigo.gs anterior a la columna "Estado" no entiende "anterior": ahí se
+  // escribe directo sobre la fila con la llave que ya existe.
+  function backendSinEstado_() {
+    return (pendingResoluciones || []).length > 0 && !pendingResoluciones.some(r => "estado" in r);
+  }
+  function destinoGuardado_(item, gvizRowIndex) {
+    const anterior = llaveAnterior_(item, gvizRowIndex);
+    if (anterior && backendSinEstado_() && Number(anterior) >= TRACK_KEY_BASE) return { row: anterior, anterior: "" };
+    return { row: gvizRowIndex, anterior };
+  }
+  function marcarLlaveGuardada_(item, gvizRowIndex) {
+    if (item && comentStates[item.commentId]) comentStates[item.commentId].llave = String(gvizRowIndex);
+  }
+
+  async function persistirResolucion_(gvizRowIndex, fecha, tipo, nota, estado) {
     if (gvizRowIndex === undefined || gvizRowIndex === null || gvizRowIndex === "undefined") return;
     const item = incidencias.find(r => String(r.trackKey) === String(gvizRowIndex));
+    const destino = destinoGuardado_(item, gvizRowIndex);
     const result = await callAppsScript("saveResolution", {
-      row: gvizRowIndex,
+      row: destino.row,
+      anterior: destino.anterior,
       fecha: fecha || "",
       tipo: tipo || "",
       nota: nota || "",
+      estado: estado || (item ? getEstadoIncidencia_(item.commentId) : ""),
       club: item ? item.club : "",
       colaborador: item ? item.colaborador : "",
-      comentario: item ? (item.comentarios || [item.tipoSolicitada, item.cantidadSolicitada].filter(Boolean).join(" x")) : "",
+      comentario: item ? textoSeguimiento_(item) : "",
       timestamp: item && item.fecha ? String(item.fecha) : ""
     });
     if (!result) {
       showToast("No se pudo guardar en el Excel (revisa la URL del backend). Se guardó localmente.");
+    } else {
+      marcarLlaveGuardada_(item, destino.row);
     }
   }
 
@@ -3271,10 +3426,14 @@
   // localStorage de quien le dio clic.
   async function persistirOculto_(gvizRowIndex, oculto) {
     if (gvizRowIndex === undefined || gvizRowIndex === null || gvizRowIndex === "undefined") return;
+    const item = incidencias.find(r => String(r.trackKey) === String(gvizRowIndex));
+    const destino = destinoGuardado_(item, gvizRowIndex);
     const result = await callAppsScript("hideComment", {
-      row: gvizRowIndex,
+      row: destino.row,
+      anterior: destino.anterior,
       oculto: oculto ? "true" : "false"
     });
+    if (result) marcarLlaveGuardada_(item, destino.row);
     if (!result) {
       showToast("No se pudo guardar en el Excel que este comentario está oculto (revisa la URL del backend). Se ocultó solo en esta computadora.");
     }
