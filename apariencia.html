@@ -785,7 +785,7 @@
     .inc-row.inc-inventario { background:#fbf1f0; }
     .inc-name { font-weight:600; }
     .inc-sub { font-size:12px; color:#5a7080; margin-top:2px; }
-    .inc-clamp { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; max-width:240px; }
+    .inc-detalle { max-width:280px; white-space:normal; overflow-wrap:anywhere; } /* comentario completo, sin recortar */
     .inc-muted { color:#98a2b3; }
     .inc-num { text-align:center; font-weight:700; }
     .inc-estado { font-family:inherit; font-size:11px; font-weight:700; line-height:1.2; border-radius:20px; padding:2px 8px; border:0; cursor:pointer; min-width:116px; width:auto; height:auto; min-height:0; box-shadow:none; color:#fff; }
@@ -3174,7 +3174,7 @@
           <td>${txt(r.embajador)}</td>
           ${conSolicitud ? `<td class="inc-num">${txt(r.cantidadSolicitada)}</td>` : ""}
           <td>${conSolicitud ? `<div class="inc-name">${txt(r.tipoSolicitada || tipoIncidencia)}</div>` : tipoSelectHtml(r, tipoIncidencia)}
-            ${detalle ? `<div class="inc-sub inc-clamp" title="${escapeHtml(detalle)}">${escapeHtml(detalle)}</div>` : ""}</td>
+            ${detalle ? `<div class="inc-sub inc-detalle">${escapeHtml(detalle)}</div>` : ""}</td>
           <td>${txt(r.rol)}</td>
           <td>${r.club ? escapeHtml(r.club) : `<span class="inc-muted">Sin sucursal</span>`}</td>
           ${conSolicitud ? `<td>${renderFotos_(r.foto)}</td>` : ""}
